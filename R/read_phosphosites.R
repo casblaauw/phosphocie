@@ -9,7 +9,7 @@
 #'
 #' @examples
 #' phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
-#' phosphosite <- read_phosphosite(phosphosite_path)
+#' phosphosite <- phosphocie:::read_phosphosite(phosphosite_path)
 #'
 read_phosphosite <- function(path) {
   phosphosite_colnames <-
@@ -78,7 +78,7 @@ read_phosphosite <- function(path) {
 #'
 #'@examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-#' kinsub <- read_kinsub(kinsub_path)
+#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
 #'
 read_kinsub <- function(path) {
   kinsub_colnames <-
