@@ -17,7 +17,7 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
   prep_ucie_data(dataset, rownames_col = rownames_col)
 
   movement <- ucie:::FitColorsFunction(dataset, WL = 1, Wa = 1, Wb = 1) %>%
-    setNames(c('S', 'RotL', 'Rota', 'Rotb', 'TrL', 'Tra', 'Trb'))
+    stats::setNames(c('S', 'RotL', 'Rota', 'Rotb', 'TrL', 'Tra', 'Trb'))
   return(movement)
 }
 
