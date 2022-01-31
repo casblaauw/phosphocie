@@ -7,6 +7,10 @@
 #'
 #' @keywords internal
 #'
+#' @examples
+#' phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
+#' phosphosite <- read_phosphosite(phosphosite_path)
+#'
 read_phosphosite <- function(path) {
   phosphosite_colnames <-
     c('gene',
@@ -72,6 +76,10 @@ read_phosphosite <- function(path) {
 #'
 #' @keywords internal
 #'
+#'@examples
+#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub <- read_kinsub(kinsub_path)
+#'
 read_kinsub <- function(path) {
   kinsub_colnames <-
     c('kin_gene',
@@ -105,8 +113,8 @@ read_kinsub <- function(path) {
     ) %>%
     # Turn 'X'/NA columns into boolean
     dplyr::mutate(
-      in_vivo = if_else(in_vivo == 'X', TRUE, FALSE) %>% tidyr::replace_na(FALSE),
-      in_vitro = if_else(in_vitro == 'X', TRUE, FALSE) %>% tidyr::replace_na(FALSE)
+      in_vivo = dplyr::if_else(in_vivo == 'X', TRUE, FALSE) %>% tidyr::replace_na(FALSE),
+      in_vitro = dplyr::if_else(in_vitro == 'X', TRUE, FALSE) %>% tidyr::replace_na(FALSE)
     ) %>%
     # Make protein names output-safe and generate unique site ID for FASTA
     dplyr::mutate(

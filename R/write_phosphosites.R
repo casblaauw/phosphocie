@@ -12,13 +12,19 @@
 #' @export
 #'
 #' @examples
-write_ksp_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_15') {
+#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' tmp <- tempfile()
+#'
+#' write_ksp_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
+
+write_ksp_input <- function(data, path, name_col, seq_col) {
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
     rlang::abort(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   data %>%
-    dplyr::select(all_of(name_col, seq_col)) %>%
+    dplyr::select(dplyr::all_of(c(name_col, seq_col))) %>%
     readr::write_tsv(path, col_names = FALSE)
   print(glue::glue('file created at {path}'))
   return(invisible(path))
@@ -40,13 +46,19 @@ write_ksp_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_1
 #' @export
 #'
 #' @examples
-write_pwm_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_15') {
+#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' tmp <- tempfile()
+#'
+#' write_pwm_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
+
+write_pwm_input <- function(data, path, name_col, seq_col) {
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
     rlang::abort(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   data %>%
-    dplyr::select(all_of(name_col, seq_col)) %>%
+    dplyr::select(dplyr::all_of(name_col, seq_col)) %>%
     dplyr::bind_cols(placeholder = ' ', .) %>%
     readr::write_tsv(path, col_names = FALSE)
   print(glue::glue('file created at {path}'))
@@ -75,6 +87,14 @@ write_pwm_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_1
 #' @export
 #'
 #' @examples
+#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' tmp <- tempfile()
+#'
+#' \dontrun{
+#'   retrieve_fastas(kinsub$acc_id, tmp)
+#' }
+
 retrieve_fastas <- function(uniprot_acc, path) {
 
   # Filter uniprot IDs
@@ -99,14 +119,14 @@ retrieve_fastas <- function(uniprot_acc, path) {
     counter <- counter + 1
     print(glue::glue('Requesting section {counter}/{length(sections)}'))
     requestURL <- glue::glue("https://www.ebi.ac.uk/proteins/api/proteins?offset=0&size=-1&accession={paste(section, collapse = ',')}")
-    r <- httr::GET(requestURL, accept("text/x-fasta"))
+    r <- httr::GET(requestURL, httr::accept("text/x-fasta"))
 
     if (httr::http_error(r)) {
       close(open_file)
       print(glue::glue("Problem with section {counter}. Accession IDs of current section: \n {paste(section, collapse = ',')}"))
       httr::stop_for_status(r)
     }
-    writeLines(content(r, as = 'text', encoding = "UTF-8"), open_file, sep = '')
+    writeLines(httr::content(r, as = 'text', encoding = "UTF-8"), open_file, sep = '')
     Sys.sleep(0.75)
   }
   close(open_file)
@@ -133,7 +153,15 @@ retrieve_fastas <- function(uniprot_acc, path) {
 #' @export
 #'
 #' @examples
-build_fastas <- function(data, path, name_col, seq_col = 'fragment_15', name_pattern = NULL) {
+#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' tmp <- tempfile()
+#'
+#' build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')
+#'
+#' build_fastas(kinsub, tmp, seq_col = 'fragment_15', name_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
+
+build_fastas <- function(data, path, name_col, seq_col, name_pattern = NULL) {
 
   # Create name column if missing
   if (missing(name_col)) {
@@ -141,7 +169,7 @@ build_fastas <- function(data, path, name_col, seq_col = 'fragment_15', name_pat
       rlang::abort('Either name_col or name_pattern must be supplied.')
     }
     data <- dplyr::mutate(data, build_fasta_id = glue::glue(name_pattern))
-    name_col <- build_fasta_id
+    name_col <- 'build_fasta_id'
     if (anyDuplicated(data[[name_col]]) > 0) {
       rlang::abort('Name column created with name_pattern is not unique, please supply a different pattern.')
     }
@@ -149,7 +177,7 @@ build_fastas <- function(data, path, name_col, seq_col = 'fragment_15', name_pat
 
   # Check column names and data
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
-    rlang::abort(glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
+    rlang::abort(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   if (any(nchar(data[[seq_col]]) > 70)) {
@@ -162,7 +190,7 @@ build_fastas <- function(data, path, name_col, seq_col = 'fragment_15', name_pat
   # Walk over name and sequence at once and write to file
   open_file <- file(path, open = 'w+')
   purrr::pwalk(
-    dplyr::select(data, all_of(c(name_col, seq_col))),
+    dplyr::select(data, dplyr::all_of(c(name_col, seq_col))),
     ~writeLines(
       text = c(
         paste0('>', ..1), # Write start line

@@ -30,3 +30,12 @@ successful batches up to then.
 \item Between each batch request, waits for 0.75 seconds to stay below rate limits.
 }
 }
+\examples{
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- phosphocie:::read_kinsub(kinsub_path)
+tmp <- tempfile()
+
+\dontrun{
+  retrieve_fastas(kinsub$acc_id, tmp)
+}
+}

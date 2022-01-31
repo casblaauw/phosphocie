@@ -13,4 +13,9 @@ read_kinsub(path)
 Wrapper around \code{\link[readr:read_delim]{readr::read_tsv()}} that cleans up the default kinase-substrate
 data to have nicer columns, cleaner values, and a prepared unique site ID.
 }
+\examples{
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- read_kinsub(kinsub_path)
+
+}
 \keyword{internal}

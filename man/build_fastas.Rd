@@ -4,13 +4,7 @@
 \alias{build_fastas}
 \title{Create a FASTA file with sequence fragments}
 \usage{
-build_fastas(
-  data,
-  path,
-  name_col,
-  seq_col = "fragment_15",
-  name_pattern = NULL
-)
+build_fastas(data, path, name_col, seq_col, name_pattern = NULL)
 }
 \arguments{
 \item{data}{Data frame in long format, containing unique names and sequence windows.}
@@ -32,4 +26,13 @@ Returns path of the output FASTA, invisibly.
 \description{
 From (potential) sites and their surrounding amino acids, create a FASTA-conforming file.
 Requires a column of unique names for each site.
+}
+\examples{
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- phosphocie:::read_kinsub(kinsub_path)
+tmp <- tempfile()
+
+build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')
+
+build_fastas(kinsub, tmp, seq_col = 'fragment_15', name_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
 }

@@ -4,7 +4,7 @@
 \alias{write_pwm_input}
 \title{Create an input file for KSP's PWM mode}
 \usage{
-write_pwm_input(data, path, name_col = "gene", seq_col = "fragment_15")
+write_pwm_input(data, path, name_col, seq_col)
 }
 \arguments{
 \item{data}{Data frame in long format, containing gene names and sequence windows.}
@@ -22,4 +22,11 @@ Returns path that file was written to, invisibly.
 Creates an input file to use for prediction with
 \href{https://doi.org/10.1186/s12864-020-06895-2}{KSP}'s position-weight matrix-based scoring tool.
 Wrapper around \code{\link[readr:write_delim]{readr::write_tsv()}}.
+}
+\examples{
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- phosphocie:::read_kinsub(kinsub_path)
+tmp <- tempfile()
+
+write_pwm_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
 }

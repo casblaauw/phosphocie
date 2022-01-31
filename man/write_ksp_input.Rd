@@ -4,7 +4,7 @@
 \alias{write_ksp_input}
 \title{Create an input file for KSP}
 \usage{
-write_ksp_input(data, path, name_col = "gene", seq_col = "fragment_15")
+write_ksp_input(data, path, name_col, seq_col)
 }
 \arguments{
 \item{data}{Data frame in long format, containing gene names and sequence windows.}
@@ -21,4 +21,11 @@ Returns path that file was written to, invisibly.
 \description{
 Creates an input file to use for prediction with \href{https://doi.org/10.1186/s12864-020-06895-2}{KSP}.
 Wrapper around \code{\link[readr:write_delim]{readr::write_tsv()}}.
+}
+\examples{
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- phosphocie:::read_kinsub(kinsub_path)
+tmp <- tempfile()
+
+write_ksp_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
 }
