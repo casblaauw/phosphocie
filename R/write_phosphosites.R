@@ -58,7 +58,7 @@ write_pwm_input <- function(data, path, name_col, seq_col) {
   }
 
   data %>%
-    dplyr::select(dplyr::all_of(name_col, seq_col)) %>%
+    dplyr::select(dplyr::all_of(c(name_col, seq_col))) %>%
     dplyr::bind_cols(placeholder = ' ', .) %>%
     readr::write_tsv(path, col_names = FALSE)
   print(glue::glue('file created at {path}'))
