@@ -2,11 +2,16 @@ Package: phosphocie
 Title: Create Continuous Phosphosite Colour Representations
 Version: 0.0.0.9000
 Authors@R: 
-    person("Cas", "Blaauw", , "casper.blaauw@cpr.ku.dk", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0001-8145-9726"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    c(person("Cas", "Blaauw", 
+             "casper.blaauw@cpr.ku.dk", 
+             role = c("aut", "cre"),
+             comment = c(ORCID = "0000-0001-8145-9726")),
+      person("Lars Juhl", "Jensen",
+             email = "lars.juhl.jensen@cpr.ku.dk",
+             role = "aut",
+             comment = c(ORCID = "0000-0001-7885-715X")))
+Description: Provides tools to visualise kinase prediction score vectors of phosphorylated protein sites in a continuous, perceptually uniform, consistent colourspace, as well as tools to prepare phosphorylation site data for kinase prediction tools.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
@@ -17,7 +22,8 @@ Imports:
    purrr,
    tidyr,
    stringr,
-   umap,
-   ucie,
    glue,
-   httr
+   rlang,
+   httr,
+   umap,
+   ucie
