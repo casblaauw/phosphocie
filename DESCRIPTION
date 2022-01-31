@@ -3,7 +3,7 @@ Title: Create Continuous Phosphosite Colour Representations
 Version: 0.0.0.9000
 Authors@R: 
     c(person("Cas", "Blaauw", 
-             "casper.blaauw@cpr.ku.dk", 
+             email = "casper.blaauw@cpr.ku.dk", 
              role = c("aut", "cre"),
              comment = c(ORCID = "0000-0001-8145-9726")),
       person("Lars Juhl", "Jensen",
