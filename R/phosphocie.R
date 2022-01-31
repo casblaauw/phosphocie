@@ -4,7 +4,7 @@
 #' phosphosite predictions in a continuous, perceptually uniform colourspace.
 #'
 #'
-#' @import dplyr
+#' @importFrom magrittr %>%
 #'
 #' @docType package
 #' @name phosphocie
