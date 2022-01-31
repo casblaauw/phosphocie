@@ -14,7 +14,7 @@
 #' @examples
 write_ksp_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_15') {
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
-    stop(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
+    rlang::abort(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   data %>%
@@ -42,7 +42,7 @@ write_ksp_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_1
 #' @examples
 write_pwm_input <- function(data, path, name_col = 'gene', seq_col = 'fragment_15') {
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
-    stop(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
+    rlang::abort(glue::glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   data %>%
@@ -138,22 +138,22 @@ build_fastas <- function(data, path, name_col, seq_col = 'fragment_15', name_pat
   # Create name column if missing
   if (missing(name_col)) {
     if (is.null(name_pattern)) {
-      stop('Either name_col or name_pattern must be supplied.')
+      rlang::abort('Either name_col or name_pattern must be supplied.')
     }
     data <- dplyr::mutate(data, build_fasta_id = glue::glue(name_pattern))
     name_col <- build_fasta_id
     if (anyDuplicated(data[[name_col]]) > 0) {
-      stop('Name column created with name_pattern is not unique, please supply a different pattern.')
+      rlang::abort('Name column created with name_pattern is not unique, please supply a different pattern.')
     }
   }
 
   # Check column names and data
   if (any(!c(name_col, seq_col) %in% colnames(data))) {
-    stop(glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
+    rlang::abort(glue("Please ensure your data contains the supplied column names. \nSupplied names: {paste(name_col, seq_col, sep = ', ')}\nDetected colnames: {paste(colnames(data), collapse = ', ')}"))
   }
 
   if (any(nchar(data[[seq_col]]) > 70)) {
-    stop("Peptide of 70+ AA detected. Please check your data.")
+    rlang::abort("Peptide of 70+ AA detected. Please check your data.")
   }
 
   # Remove any filling underscores and other junk by extracting first alphanumeric group
