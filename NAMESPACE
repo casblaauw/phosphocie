@@ -2,6 +2,8 @@
 
 export(build_fastas)
 export(kinase2cielab)
+export(read_ksp)
+export(read_netphorest)
 export(retrieve_fastas)
 export(ucie_transformations)
 export(write_ksp_input)
