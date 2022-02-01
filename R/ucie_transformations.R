@@ -21,7 +21,7 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
   return(movement)
 }
 
-#' Title
+#' Get colours from fitted kinase data
 #'
 #' @param dataset A data frame or matrix of 3D values.
 #' @param transform_vals A numeric vector with 1 scaling, 3 rotation, and 3 translation values,
@@ -38,7 +38,9 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' @examples
 kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rownames_col = NULL) {
 
+  # Prep dataset
   dataset <- prep_ucie_data(dataset, rownames_col = rownames_col)
+
 
   dataset <- ucie:::Scaling(dataset, transform_vals[1]*1)
   dataset <- ucie:::Rotation(as.matrix(dataset), transform_vals[2], transform_vals[3], transform_vals[4])
@@ -59,10 +61,10 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
 
   LABdata <- with(rawdata, colorspace::LAB(Lstar, Astar, Bstar))
 
-  if(LAB_coordinates==FALSE){
-    colors <- as.data.frame(cbind(rownames(dataset),colorspace::hex(LABdata, fix = TRUE)))
+  if (LAB_coordinates == FALSE) {
+    colors <- as.data.frame(cbind(rownames(dataset), colorspace::hex(LABdata, fix = TRUE)))
   } else {
-    colors <- as.data.frame(cbind(rownames(dataset),as.data.frame(LABdata@coords)))
+    colors <- as.data.frame(cbind(rownames(dataset), as.data.frame(LABdata@coords)))
     colnames(colors) <- c("names", "L", "a", "b")
   }
 
@@ -83,10 +85,9 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
 #'   * Matrices are transformed to data frames.
 #'   * If rownames_col is given, that column is discarded as well.
 #'   * 2D matrices or data frames are expanded to 3D by padding with 1's.
-#' @keywords internal
 #'
-#' @examples
-prep_ucie_data <- function(dataset, rownames_col) {
+#' @keywords internal
+prep_ucie_data <- function(dataset, rownames_col = NULL) {
 
   # If matrix, transform to data frame
   if (!inherits(dataset, "data.frame")) {
@@ -110,14 +111,19 @@ prep_ucie_data <- function(dataset, rownames_col) {
     warning("The dataset has been transformed into a data frame.")
   }
 
+  # If tibble, convert to data.frame for rowname consistency
+  if (inherits(dataset, 'tbl')) {
+    dataset <- as.data.frame(dataset)
+  }
+
   # If rownames column supplied or first column looks like rownames, move to actual rownames
   if (!is.null(rownames_col)) {
     rownames_temp <- dataset[[rownames_col]]
     rownames(dataset) <- rownames_temp
     dataset <- dataset[colnames(dataset) != rownames_col]
-  } else if (is.character(dataset[,1])) {
-    rownames(dataset) <- dataset[,1]
-    dataset <- dataset[-1]
+  } else if (is.character(dataset[[1]])) {
+    rownames(dataset) <- dataset[[1]]
+    dataset <- dataset[[-1]]
   }
 
   # Check for non-numeric data

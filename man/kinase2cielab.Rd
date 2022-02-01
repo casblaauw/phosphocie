@@ -2,7 +2,7 @@
 % Please edit documentation in R/ucie_transformations.R
 \name{kinase2cielab}
 \alias{kinase2cielab}
-\title{Title}
+\title{Get colours from fitted kinase data}
 \usage{
 kinase2cielab(
   dataset,
@@ -25,7 +25,7 @@ as calculated by \code{\link[=ucie_transformations]{ucie_transformations()}}.}
 
 }
 \description{
-Title
+Get colours from fitted kinase data
 }
 \details{
 \code{dataset} can be a 2D or 3D matrix or data frame, with optional

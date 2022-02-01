@@ -4,7 +4,7 @@
 \alias{prep_ucie_data}
 \title{Check and reformat data for use with U-CIE functions}
 \usage{
-prep_ucie_data(dataset, rownames_col)
+prep_ucie_data(dataset, rownames_col = NULL)
 }
 \arguments{
 \item{dataset}{A data frame or matrix of 2D or 3D values.}
