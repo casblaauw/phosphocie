@@ -29,7 +29,7 @@ read_phosphosite <- function(path) {
       'cst_cat'
     )
     # Read in data
-  readr::read_tsv(path, skip = 4, col_names = phosphosite_colnames) %>%
+  readr::read_tsv(path, skip = 4, col_names = phosphosite_colnames, show_col_types = FALSE) %>%
     # Drop useless columns
     dplyr::select(-c('lt_lit', 'ms_lit', 'ms_cst', 'cst_cat')) %>%
     # Separate ptm column into residue, position, and type info
@@ -101,7 +101,7 @@ read_kinsub <- function(path) {
     )
 
     # Read in data
-  readr::read_tsv(path, skip = 4, col_names = kinsub_colnames) %>%
+  readr::read_tsv(path, skip = 4, col_names = kinsub_colnames, show_col_types = FALSE) %>%
     # Drop useless columns
     dplyr::select(-c('cst_cat')) %>%
     # Separate ptm column into residue and position columns
