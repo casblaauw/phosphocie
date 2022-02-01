@@ -25,7 +25,7 @@ read_ksp <- function(path) {
                      stringr::str_split_fixed(' ', n = 2) %>%   # Split kinase and score apart
                      {set_names(as.numeric(.[,2]), .[,1])}      # Turn into named numeric vector
                    ) %>%
-    dplyr::mutate(dplyr::across(everything(), ~replace(., is.na(.), 0.0))) # Turn NAs (non-predicted scores) into 0
+    dplyr::mutate(dplyr::across(dplyr::everything(), ~replace(., is.na(.), 0.0))) # Turn NAs (non-predicted scores) into 0
 
   file_mat <- as.matrix(file_list)
   return(file_mat)
@@ -92,7 +92,7 @@ read_netphorest <- function(path, return_long = FALSE) {
 
   # Check whether all kinases match known netphorest kinase families
   unknown_kinases <- dplyr::filter(long_data, !kinase_fam %in% netphorest_kinase_names)
-  if (nrow(unknown_kinases) > 0) stop(glue('Unknown kinases found: {paste(unknown_kinases$kinase_fam, collapse = ", ")}'))
+  if (nrow(unknown_kinases) > 0) stop(glue::glue('Unknown kinases found: {paste(unknown_kinases$kinase_fam, collapse = ", ")}'))
 
   # Reshape data into wide format
   print('Reshaping data into wide matrix-like format, this might take a while.')
@@ -110,7 +110,7 @@ read_netphorest <- function(path, return_long = FALSE) {
     empty_cols <- matrix(0, nrow = nrow(wide_data), ncol = length(unpredicted_kinases)) %>%
       magrittr::set_colnames(unpredicted_kinases) %>%
       dplyr::as_tibble()
-    wide_data <- bind_cols(wide_data, empty_cols)
+    wide_data <- dplyr::bind_cols(wide_data, empty_cols)
   }
 
   # Sort kinase columns
