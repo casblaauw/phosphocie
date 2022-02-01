@@ -41,7 +41,11 @@ read_ksp <- function(path) {
 #' @param path Path to the netphorest output file
 #' @param return_long Optional boolean: whether to return the data in long format
 #' (kinases on rows, like raw data), or whether to widen data (kinases as columns,
-#' for use with U-CIE)
+#' for use with U-CIE). Default is false (return wide)
+#' @param split_fasta_header Optional boolean: whether to try and extract data
+#' from the fasta header, like accession ID, gene name, and original site residue.
+#' Supports UniProt FASTA headers (acc_id, protein) and [build_fastas()] headers
+#' (acc_id, gene, protein, protein_res_col, protein_pos_col).
 #'
 #' @return A tibble with site/protein data and kinase scores
 #' @export
@@ -84,7 +88,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
     } else if (mean(stringr::str_detect(head(long_data$fasta_id, 100), '^\\w{6,10}\\|')) > 0.75) {
       long_data <- long_data %>%
         tidyr::separate(fasta_id, c('acc_id', 'gene', 'protein', 'orig_ptm_residue'), sep = '\\|', remove = FALSE) %>%
-        tidyr::separate(orig_ptm_residue, c('protein_res_col', 'protein_pos_col'), sep = 1)
+        tidyr::separate(orig_ptm_residue, c('orig_res', 'orig_pos'), sep = 1)
     } else {
       rlang::abort(glue::glue('Could not detect fasta header format. Set split_fasta_header to FALSE to disable splitting. Header example: {long_data$fasta_id[1]}'))
     }
@@ -101,7 +105,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
   print('Reshaping data into wide matrix-like format, this might take a while.')
   wide_data <- long_data %>%
     tidyr::pivot_wider(
-      id_cols = c(dplyr::all_of(c('fasta_id', 'position', 'residue', 'fragment_11')), dplyr::any_of(c('acc_id', 'gene', 'protein', 'orig_ptm_residue'))),
+      id_cols = c(dplyr::all_of(c('fasta_id', 'position', 'residue', 'fragment_11')), dplyr::any_of(c('acc_id', 'gene', 'protein', 'orig_ptm_residue', 'orig_res', 'orig_pos'))),
       names_from = kinase_fam,
       values_from = posterior,
       values_fill = 0
@@ -190,7 +194,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
 #' # Default usage
 #' kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
 #' kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
-#' kinsub_filtered <- filter_netphorest(kinsub_netphorest_path, source_window_size = 15)
+#' kinsub_filtered <- filter_netphorest(kinsub_netphorest, source_window_size = 15)
 #'
 #' # Handle ambiguous sites
 #' ambiguous_data <- data.frame(id = c("P13796|LCP1|L-plastin|S5", "P13796|LCP1|L-plastin|S5"),
@@ -214,8 +218,8 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
 #' ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_site', 'orig_res'), '\\|(\\w)(\\d{1,4})$',
 #'                                        remove = FALSE, convert = TRUE)
 #'
-#' filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
-#' filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', protein_site_col = 'orig_site')
+#' filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
+#' filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_pos_col = 'orig_site')
 #'
 filter_netphorest <- function(data,
                               source_window_size,
@@ -229,10 +233,6 @@ filter_netphorest <- function(data,
                               keep_uncertain = NULL) {
 
   # Prep: check parameters
-  if (missing(netphorest_window_size)) {
-    netphorest_window_size <- round(mean(nchar(data[[seq_col]])), 0)
-  }
-
   submitted_cols <- c('name_col' = name_col,
                       'seq_col' = seq_col,
                       'pos_col' = pos_col,
@@ -246,6 +246,10 @@ filter_netphorest <- function(data,
       "Not all submitted column names are in the data.",
       "Faulty: {paste(names(missing_cols), missing_cols, sep = ' = ', collapse = ', ')}"
       ))
+  }
+
+  if (missing(netphorest_window_size)) {
+    netphorest_window_size <- round(mean(nchar(data[[seq_col]])), 0)
   }
 
   # Optional step 1: Match proposed site residues to true site residues

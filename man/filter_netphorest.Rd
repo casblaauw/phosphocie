@@ -92,7 +92,7 @@ which are generally discarded (as we expect the site to be in the middle of the 
 # Default usage
 kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
 kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
-kinsub_filtered <- filter_netphorest(kinsub_netphorest_path, source_window_size = 15)
+kinsub_filtered <- filter_netphorest(kinsub_netphorest, source_window_size = 15)
 
 # Handle ambiguous sites
 ambiguous_data <- data.frame(id = c("P13796|LCP1|L-plastin|S5", "P13796|LCP1|L-plastin|S5"),
@@ -116,7 +116,7 @@ filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = FALSE
 ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_site', 'orig_res'), '\\\\|(\\\\w)(\\\\d{1,4})$',
                                        remove = FALSE, convert = TRUE)
 
-filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
-filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', protein_site_col = 'orig_site')
+filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
+filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_pos_col = 'orig_site')
 
 }

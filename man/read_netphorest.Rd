@@ -11,7 +11,12 @@ read_netphorest(path, return_long = FALSE, split_fasta_header = FALSE)
 
 \item{return_long}{Optional boolean: whether to return the data in long format
 (kinases on rows, like raw data), or whether to widen data (kinases as columns,
-for use with U-CIE)}
+for use with U-CIE). Default is false (return wide)}
+
+\item{split_fasta_header}{Optional boolean: whether to try and extract data
+from the fasta header, like accession ID, gene name, and original site residue.
+Supports UniProt FASTA headers (acc_id, protein) and \code{\link[=build_fastas]{build_fastas()}} headers
+(acc_id, gene, protein, protein_res_col, protein_pos_col).}
 }
 \value{
 A tibble with site/protein data and kinase scores
