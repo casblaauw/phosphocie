@@ -5,6 +5,7 @@
 #'
 #'
 #' @importFrom magrittr %>%
+#' @importFrom rlang .data
 #'
 #' @docType package
 #' @name phosphocie

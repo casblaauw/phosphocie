@@ -4,7 +4,7 @@
 \alias{read_netphorest}
 \title{Read in NetPhorest prediction output}
 \usage{
-read_netphorest(path, return_long = FALSE)
+read_netphorest(path, return_long = FALSE, split_fasta_header = FALSE)
 }
 \arguments{
 \item{path}{Path to the netphorest output file}
