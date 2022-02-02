@@ -12,14 +12,14 @@ prep_ucie_data(dataset, rownames_col = NULL)
 \item{rownames_col}{Optional: name of column to ignore during calculations.}
 }
 \description{
-Takes a 2D or 3D matrix or data frame and returns a 3D data frame, checked for non-numeric values.
+Takes a 2D or 3D matrix or data frame and returns a 3D matrix, checked for non-numeric values.
 }
 \details{
 The function does a number of processing steps to accept as many data formats as feasible:
 \itemize{
 \item Rownames in the first column of the matrix (as tested by unconvertability to numeric) or of the data frame are discarded.
 \item Character matrices are converted to numeric.
-\item Matrices are transformed to data frames.
+\item Data frames are converted to matrices.
 \item If rownames_col is given, that column is discarded as well.
 \item 2D matrices or data frames are expanded to 3D by padding with 1's.
 }
