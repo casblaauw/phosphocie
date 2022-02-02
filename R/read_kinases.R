@@ -62,44 +62,42 @@ read_netphorest <- function(path, return_long = FALSE, id_pattern = NULL, split_
   # netphorest_known_kinases is included as internal package object and can be generated with data-raw/extract_netphorest_kinases.R
 
   # Read in data and keep only kinase predictions
-  long_data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE) %>%
-    dplyr::filter(binder_type == 'KIN') %>%
-    dplyr::distinct(.keep_all = TRUE)
+  data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE)
+  data <- dplyr::filter(data, binder_type == 'KIN')
+  data <- dplyr::distinct(data, .keep_all = TRUE)
 
   # Option: replace id column by custom pattern
   if (!is.null(id_pattern)){
-    long_data <- dplyr::mutate(long_data, fasta_id = glue::glue(id_pattern))
+    data <- dplyr::mutate(data, fasta_id = glue::glue(id_pattern))
   }
 
   # Option: split fasta header into constituent components
   if (split_fasta_header) {
     # Detect fasta header type
     ## Detect uniprot fasta if it starts with a database marker
-    if (mean(stringr::str_detect(head(long_data$fasta_id, 100), 'sp|tr\\|')) > 0.75) { # 75+% of data matches pattern
-      long_data <- long_data %>%
-        tidyr::separate(fasta_id, c(NA, 'acc_id', 'uniprot_name'), sep = '\\|', remove = FALSE) %>%
-        tidyr::separate(uniprot_name, c('protein', NA), sep = '_')
+    if (mean(stringr::str_detect(head(data$fasta_id, 100), 'sp|tr\\|')) > 0.75) { # 75+% of data matches pattern
+      data <- tidyr::separate(data, fasta_id, c(NA, 'acc_id', 'uniprot_name'), sep = '\\|', remove = FALSE)
+      data <- tidyr::separate(data, uniprot_name, c('protein', NA), sep = '_')
       ## Detect own fasta if it starts with a uniprot ID (6-10 word characters)
-    } else if (mean(stringr::str_detect(head(long_data$fasta_id, 100), '^\\w{6,10}\\|')) > 0.75) {
-      long_data <- long_data %>%
-        tidyr::separate(fasta_id, c('acc_id', 'gene', 'protein', 'orig_ptm_residue'), sep = '\\|', remove = FALSE) %>%
-        tidyr::separate(orig_ptm_residue, c('orig_res', 'orig_pos'), sep = 1)
+    } else if (mean(stringr::str_detect(head(data$fasta_id, 100), '^\\w{6,10}\\|')) > 0.75) {
+      data <- tidyr::separate(data, fasta_id, c('acc_id', 'gene', 'protein', 'orig_ptm_residue'), sep = '\\|', remove = FALSE)
+      data <- tidyr::separate(data, orig_ptm_residue, c('orig_res', 'orig_pos'), sep = 1)
     } else {
-      rlang::abort(glue::glue('Could not detect fasta header format. Set split_fasta_header to FALSE to disable splitting. Header example: {long_data$fasta_id[1]}'))
+      rlang::abort(glue::glue('Could not detect fasta header format. Set split_fasta_header to FALSE to disable splitting. Header example: {data$fasta_id[1]}'))
     }
   }
 
   # Option: return raw-ish long-format data
-  if (return_long) return(long_data)
+  if (return_long) return(data)
 
   # Check whether all kinases match known netphorest kinase families
-  unknown_kinases <- dplyr::filter(long_data, !kinase_fam %in% netphorest_known_kinases)
+  unknown_kinases <- dplyr::filter(data, !kinase_fam %in% netphorest_known_kinases)
   if (nrow(unknown_kinases) > 0) rlang::abort(glue::glue('Unknown kinases found: {paste(unknown_kinases$kinase_fam, collapse = ", ")}'))
 
   # Reshape data into wide format
   message('Reshaping data into wide matrix-like format, this might take a while.')
-  wide_data <- long_data %>%
-    tidyr::pivot_wider(
+  data <- tidyr::pivot_wider(
+      data,
       id_cols = c(dplyr::all_of(c('fasta_id', 'position', 'residue', 'fragment_11')), dplyr::any_of(c('acc_id', 'gene', 'protein', 'orig_ptm_residue', 'orig_res', 'orig_pos'))),
       names_from = kinase_fam,
       values_from = posterior,
@@ -107,19 +105,18 @@ read_netphorest <- function(path, return_long = FALSE, id_pattern = NULL, split_
     )
 
   # Append empty columns for any kinases not listed
-  unpredicted_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% unique(long_data$kinase_fam)]
+  unpredicted_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% unique(data$kinase_fam)]
   if (!rlang::is_empty(unpredicted_kinases)) {
-    empty_cols <- matrix(0, nrow = nrow(wide_data), ncol = length(unpredicted_kinases)) %>%
+    empty_cols <- matrix(0, nrow = nrow(data), ncol = length(unpredicted_kinases)) %>%
       magrittr::set_colnames(unpredicted_kinases) %>%
       dplyr::as_tibble()
-    wide_data <- dplyr::bind_cols(wide_data, empty_cols)
+    data <- dplyr::bind_cols(data, empty_cols)
   }
 
   # Sort kinase columns
-  wide_data <- wide_data %>%
-    dplyr::relocate(dplyr::all_of(sort(netphorest_known_kinases)), .after = dplyr::last_col())
+  data <- dplyr::relocate(data, dplyr::all_of(sort(netphorest_known_kinases)), .after = dplyr::last_col())
 
-  return(wide_data)
+  return(data)
 }
 
 
