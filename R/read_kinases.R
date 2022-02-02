@@ -76,7 +76,8 @@ read_netphorest <- function(path, return_long = FALSE, id_pattern = NULL, split_
 
   # Read in data and keep only kinase predictions
   long_data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE) %>%
-    dplyr::filter(binder_type == 'KIN')
+    dplyr::filter(binder_type == 'KIN') %>%
+    dplyr::distinct(.keep_all = TRUE)
 
   # Option: replace id column by custom pattern
   if (!is.null(id_pattern)){
@@ -283,19 +284,18 @@ filter_netphorest <- function(data,
 
   # Optional step 2: For start-truncated sites, match full position to res position
   if (!is.null(protein_pos_col)) {
-    step1 <- nonunique_data %>%
-      dplyr::mutate(step1 = .data[[pos_col]] == .data[[protein_pos_col]])
+    step2 <- nonunique_data %>%
+      dplyr::mutate(step2 = .data[[pos_col]] == .data[[protein_pos_col]])
 
-    unique_data <- step1 %>%
-      dplyr::filter(step1) %>%
+    unique_data <- step2 %>%
+      dplyr::filter(step2) %>%
       dplyr::ungroup() %>%
       dplyr::select(-dplyr::starts_with('step')) %>%
       dplyr::bind_rows(unique_data, .)
 
-    nonunique_data <- step1 %>%
-      dplyr::filter(!any(step1))
+    nonunique_data <- step2 %>%
+      dplyr::filter(!any(step2))
   }
-
 
   # Step 3/4: Find middle site.
   # For end-truncated sites (i.e shorter sequences), use expected # of dashes to shift midpoint backwards
@@ -308,33 +308,36 @@ filter_netphorest <- function(data,
   # If original sequence (source_window_size) was less than 15 seq, there will be more dashes than expected
   # So shift the midpoint by difference between expected and observed:
   # new_mid = midpoint - (n_dash - max(0, position + half_window_width - source_window_size_size))
-  step2 <- nonunique_data %>%
+  step3 <- nonunique_data %>%
     dplyr::mutate(
-      step2_shift = dplyr::if_else(
+      step3_shift = dplyr::if_else(
         stringr::str_ends(.data[[seq_col]], '-'),
-        stringr::str_count(.data[[seq_col]], '-') - max(c(0, .data[[pos_col]] + floor(netphorest_window_size/2) - source_window_size)),
+        stringr::str_count(.data[[seq_col]], '-') - pmax(0, .data[[pos_col]] + floor(netphorest_window_size/2) - source_window_size),
         0
       ),
-      step2_mid = ceiling(source_window_size/2) - .data[['step2_shift']],
-      step2 = .data[[pos_col]] == .data[['step2_mid']]
+      step3_mid = ceiling(source_window_size/2) - .data[['step3_shift']],
+      step3 = .data[[pos_col]] == .data[['step3_mid']]
     )
-  unique_data <- step2 %>%
-    dplyr::filter(step2) %>%
+  unique_data <- step3 %>%
+    dplyr::filter(step3) %>%
     dplyr::select(-dplyr::starts_with('step')) %>%
     dplyr::ungroup() %>%
     dplyr::bind_rows(unique_data, .)
 
-  nonunique_data <- step2 %>% dplyr::filter(!any(step2))
-
+  nonunique_data <- step3 %>% dplyr::filter(!any(step3))
   # Handle inconclusive sites
   if (nrow(nonunique_data) > 0) {
     # Prepare warning text
+    nonunique_names <- unique(nonunique_data[[name_col]])
+    if (length(nonunique_names) > 50) {
+      nonunique_names <- c(nonunique_names[1:50], glue::glue('and {length(nonunique_names)-50} more.'))
+    }
     base_warn <- paste0("Could not conclusively determine original site for IDs ",
-                        "{paste(unique(nonunique_data[[name_col]]), sep = ', ')}.")
+                        "{paste(nonunique_names, collapse = ', ')}.")
     extra_cols_warn <- ifelse(
       is.null(protein_res_col) | is.null(protein_pos_col),
       paste0("\n(This generally happens for sites at the start of proteins. ",
-             "Consider providing `protein_res_col`, `detected_res_col` and/or `protein_pos_col`",
+             "Consider providing `protein_res_col`, `detected_res_col` and/or `protein_pos_col` ",
              "to reduce ambiguity.)"),
       "")
     # Filter, keep all, or discard data based on keep_uncertain
@@ -354,7 +357,7 @@ filter_netphorest <- function(data,
         dplyr::ungroup() %>%
         dplyr::bind_rows(unique_data, .)
     } else if (isFALSE(keep_uncertain)) {
-      uncertain_warn <- paste0("\nThese groups will be fully discarded.",
+      uncertain_warn <- paste0("\nThese groups will be fully discarded. ",
                                "Change `keep_uncertain` to adjust this behaviour.")
     }
     message(glue::glue(base_warn, uncertain_warn, extra_cols_warn))

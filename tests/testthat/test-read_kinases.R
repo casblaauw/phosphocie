@@ -29,9 +29,10 @@ ambiguous_data <- data.frame( # True value is 5, but ambiguous; w/o info, picks 
   )
 
 
+kinsub_netphorest <- kinsub_netphorest_path %>%
+  read_netphorest()
 
-kinsub_netphorest_small <- kinsub_netphorest_path %>%
-  read_netphorest() %>%
+kinsub_netphorest_small <- kinsub_netphorest %>%
   dplyr::filter(fasta_id %in% head(unique(.$fasta_id), 10))
 
 
@@ -39,6 +40,20 @@ test_that("filter_netphorest can filter read_netphorest data by default", {
   expect_equal(
     nrow(filter_netphorest(kinsub_netphorest_small, source_window_size = 15)),
     10
+  )
+})
+
+test_that("filter_netphorest output has only unique IDs", {
+  expect_equal(
+    anyDuplicated(filter_netphorest(kinsub_netphorest, source_window_size = 15)$fasta_id),
+    0
+  )
+})
+
+test_that("filter_netphorest output has only unique IDs if keep_uncertain = FALSE", {
+  expect_equal(
+    anyDuplicated(filter_netphorest(kinsub_netphorest, source_window_size = 15)$fasta_id),
+    0
   )
 })
 
