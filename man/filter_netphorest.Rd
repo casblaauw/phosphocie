@@ -90,7 +90,7 @@ which are generally discarded (as we expect the site to be in the middle of the 
 }
 \examples{
 # Default usage
-kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'readphosphocie')
+kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
 kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
 kinsub_filtered <- filter_netphorest(kinsub_netphorest, source_window_size = 15)
 
