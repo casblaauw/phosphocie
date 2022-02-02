@@ -29,7 +29,7 @@ Requires a column of unique names for each site.
 }
 \examples{
 kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-kinsub <- phosphocie:::read_kinsub(kinsub_path)
+kinsub <- read_kinsub(kinsub_path)
 tmp <- tempfile()
 
 build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')

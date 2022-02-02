@@ -32,7 +32,7 @@ successful batches up to then.
 }
 \examples{
 kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-kinsub <- phosphocie:::read_kinsub(kinsub_path)
+kinsub <- read_kinsub(kinsub_path)
 tmp <- tempfile()
 
 \dontrun{
