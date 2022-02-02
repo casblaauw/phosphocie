@@ -11,7 +11,10 @@ test_that("read_netphorest can read in data as long format", {
   expect_equal(dim(kinsub_netphorest), c(3458L, 10L))
 })
 
-
+test_that("read_netphorest can split fasta header", {
+  kinsub_netphorest <- read_netphorest(kinsub_netphorest_path, split_fasta_header = TRUE)
+  expect_equal(dim(kinsub_netphorest), c(87L, 64L))
+})
 
 
 # Test filter_netphorest
