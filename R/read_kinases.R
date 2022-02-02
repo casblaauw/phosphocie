@@ -59,20 +59,7 @@ read_ksp <- function(path) {
 read_netphorest <- function(path, return_long = FALSE, id_pattern = NULL, split_fasta_header = FALSE) {
   # Load in knowledge about netphorest output
   netphorest_colnames <- c('fasta_id', 'position', 'residue', 'fragment_11', 'method', 'organism', 'binder_type', 'kinase_fam', 'posterior', 'prior')
-  netphorest_known_kinases <- c("AMPK_group", "CDK2_CDK3_CDK1_CDK5_group", "CK1_group", "DMPK_group",
-                               "EGFR_group", "InsR_group", "Src_group", "p38_group", "MAPK3_MAPK1_MAPK7_NLK_group",
-                               "PKD_group", "CLK_group", "DAPK_group", "RCK_group", "LKB1",
-                               "MST_group", "YSK_group", "PAK_group", "Pim3_Pim1_group", "Pim2",
-                               "SLK_group", "ACTR2_ACTR2B_TGFbR2_group", "TLK_group", "MSN_group",
-                               "p70S6K_group", "Eph_group", "NEK1_NEK5_NEK3_NEK4_NEK11_NEK2_group",
-                               "ATM_ATR_group", "Abl_group", "AuroraA", "CDK4_CDK6_group", "CDK7",
-                               "CK2_group", "CaMKII_group", "CaMKIV", "CaMKI_group", "DNAPK",
-                               "EIF2AK2", "FLT3_CSF1R_Kit_PDGFR_group", "GRK_group", "GSK3_group",
-                               "HIPK1_HIPK2_group", "IKKalpha_IKKbeta_group", "JAK2", "JNK_group",
-                               "KDR_FLT1_group", "MAP2K_group", "Met_group", "PDHK_group", "PKA_group",
-                               "PKB_group", "PKC_group", "PKGcGK_group", "ROCK_group", "RSK_group",
-                               "SGK_group", "Syk_group", "TTK", "Tec_group", "Trk_group", "Tyk2"
-  )
+  # netphorest_known_kinases is included as internal package object and can be generated with data-raw/extract_netphorest_kinases.R
 
   # Read in data and keep only kinase predictions
   long_data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE) %>%
