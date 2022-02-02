@@ -2,9 +2,12 @@
 
 export(build_fastas)
 export(filter_netphorest)
+export(filter_phosphosites)
 export(kinase2cielab)
+export(read_kinsub)
 export(read_ksp)
 export(read_netphorest)
+export(read_phosphosite)
 export(retrieve_fastas)
 export(ucie_transformations)
 export(write_ksp_input)

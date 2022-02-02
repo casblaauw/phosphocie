@@ -4,8 +4,7 @@
 #' site data to have nicer columns, cleaner values, and a prepared unique site ID.
 #'
 #' @param path The path to the unzipped kinase substrate file.
-#'
-#' @keywords internal
+#' @export
 #'
 #' @examples
 #' phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
@@ -73,8 +72,7 @@ read_phosphosite <- function(path) {
 #' data to have nicer columns, cleaner values, and a prepared unique site ID.
 #'
 #' @param path The path to the unzipped kinase substrate file.
-#'
-#' @keywords internal
+#' @export
 #'
 #'@examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
@@ -143,4 +141,22 @@ read_kinsub <- function(path) {
         'in_vitro'
       )
     ))
+}
+
+#' Filter phosphosite data to human, uniprot-conformant data
+#'
+#' Filters out rows from non-human organisms or with non-uniprot-conformant accession ids.
+#'
+#' @param data Dataset from [read_phosphosite()] or [read_kinsub()]
+#' @param organism_col Optional: name of data column containing organism data.
+#' @param acc_id_col Optional: name of data column containing accession id data.
+#'
+#' @return The filtered data frame.
+#' @export
+#'
+filter_phosphosites <- function(data, organism_col = 'organism', acc_id_col = 'acc_id') {
+  uniprot_regex <- '^[OPQ][0-9][A-Z0-9]{3}[0-9]?-?\\d{1,3}$|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$'
+  phosphosite %>%
+    dplyr::filter(tolower(.data[[organism_col]]) == 'human') %>%
+    dplyr::filter(str_detect(.data[[acc_id_col]], uniprot_regex))
 }

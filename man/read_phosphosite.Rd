@@ -18,4 +18,3 @@ phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', 
 phosphosite <- phosphocie:::read_phosphosite(phosphosite_path)
 
 }
-\keyword{internal}

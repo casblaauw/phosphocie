@@ -18,4 +18,3 @@ kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package =
 kinsub <- phosphocie:::read_kinsub(kinsub_path)
 
 }
-\keyword{internal}

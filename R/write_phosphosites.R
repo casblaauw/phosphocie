@@ -13,7 +13,7 @@
 #'
 #' @examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' kinsub <- read_kinsub(kinsub_path)
 #' tmp <- tempfile()
 #'
 #' write_ksp_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
@@ -47,7 +47,7 @@ write_ksp_input <- function(data, path, name_col, seq_col) {
 #'
 #' @examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' kinsub <- read_kinsub(kinsub_path)
 #' tmp <- tempfile()
 #'
 #' write_pwm_input(kinsub, tmp, name_col = 'gene', seq_col = 'fragment_15')
@@ -88,7 +88,7 @@ write_pwm_input <- function(data, path, name_col, seq_col) {
 #'
 #' @examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' kinsub <- read_kinsub(kinsub_path)
 #' tmp <- tempfile()
 #'
 #' \dontrun{
@@ -154,7 +154,7 @@ retrieve_fastas <- function(uniprot_acc, path) {
 #'
 #' @examples
 #' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
-#' kinsub <- phosphocie:::read_kinsub(kinsub_path)
+#' kinsub <- read_kinsub(kinsub_path)
 #' tmp <- tempfile()
 #'
 #' build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')
