@@ -90,7 +90,7 @@ which are generally discarded (as we expect the site to be in the middle of the 
 }
 \examples{
 # Default usage
-kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
+kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'readphosphocie')
 kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
 kinsub_filtered <- filter_netphorest(kinsub_netphorest, source_window_size = 15)
 
@@ -113,7 +113,7 @@ filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = TRUE)
 filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = FALSE)
 
 ## Or return the true value by integrating outside site data, like extracted from the fasta header:
-ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_site', 'orig_res'), '\\\\|(\\\\w)(\\\\d{1,4})$',
+ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_res', 'orig_site'), '\\\\|(\\\\w)(\\\\d{1,4})$',
                                        remove = FALSE, convert = TRUE)
 
 filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')

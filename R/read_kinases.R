@@ -42,6 +42,8 @@ read_ksp <- function(path) {
 #' @param return_long Optional boolean: whether to return the data in long format
 #' (kinases on rows, like raw data), or whether to widen data (kinases as columns,
 #' for use with U-CIE). Default is false (return wide)
+#' @param id_pattern Optional character value: replaces `fasta_id` column with the
+#' [glue::glue()] pattern supplied. Current id column can be incorporated with '{fasta_id}'.
 #' @param split_fasta_header Optional boolean: whether to try and extract data
 #' from the fasta header, like accession ID, gene name, and original site residue.
 #' Supports UniProt FASTA headers (acc_id, protein) and [build_fastas()] headers
@@ -54,10 +56,10 @@ read_ksp <- function(path) {
 #' kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
 #' kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
 #'
-read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALSE) {
+read_netphorest <- function(path, return_long = FALSE, id_pattern = NULL, split_fasta_header = FALSE) {
   # Load in knowledge about netphorest output
   netphorest_colnames <- c('fasta_id', 'position', 'residue', 'fragment_11', 'method', 'organism', 'binder_type', 'kinase_fam', 'posterior', 'prior')
-  netphorest_kinase_names <- c("AMPK_group", "CDK2_CDK3_CDK1_CDK5_group", "CK1_group", "DMPK_group",
+  netphorest_known_kinases <- c("AMPK_group", "CDK2_CDK3_CDK1_CDK5_group", "CK1_group", "DMPK_group",
                                "EGFR_group", "InsR_group", "Src_group", "p38_group", "MAPK3_MAPK1_MAPK7_NLK_group",
                                "PKD_group", "CLK_group", "DAPK_group", "RCK_group", "LKB1",
                                "MST_group", "YSK_group", "PAK_group", "Pim3_Pim1_group", "Pim2",
@@ -75,6 +77,11 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
   # Read in data and keep only kinase predictions
   long_data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE) %>%
     dplyr::filter(binder_type == 'KIN')
+
+  # Option: replace id column by custom pattern
+  if (!is.null(id_pattern)){
+    long_data <- dplyr::mutate(long_data, fasta_id = glue::glue(id_pattern))
+  }
 
   # Option: split fasta header into constituent components
   if (split_fasta_header) {
@@ -98,11 +105,11 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
   if (return_long) return(long_data)
 
   # Check whether all kinases match known netphorest kinase families
-  unknown_kinases <- dplyr::filter(long_data, !kinase_fam %in% netphorest_kinase_names)
+  unknown_kinases <- dplyr::filter(long_data, !kinase_fam %in% netphorest_known_kinases)
   if (nrow(unknown_kinases) > 0) rlang::abort(glue::glue('Unknown kinases found: {paste(unknown_kinases$kinase_fam, collapse = ", ")}'))
 
   # Reshape data into wide format
-  print('Reshaping data into wide matrix-like format, this might take a while.')
+  message('Reshaping data into wide matrix-like format, this might take a while.')
   wide_data <- long_data %>%
     tidyr::pivot_wider(
       id_cols = c(dplyr::all_of(c('fasta_id', 'position', 'residue', 'fragment_11')), dplyr::any_of(c('acc_id', 'gene', 'protein', 'orig_ptm_residue', 'orig_res', 'orig_pos'))),
@@ -112,7 +119,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
     )
 
   # Append empty columns for any kinases not listed
-  unpredicted_kinases <- netphorest_kinase_names[!netphorest_kinase_names %in% unique(long_data$kinase_fam)]
+  unpredicted_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% unique(long_data$kinase_fam)]
   if (!rlang::is_empty(unpredicted_kinases)) {
     empty_cols <- matrix(0, nrow = nrow(wide_data), ncol = length(unpredicted_kinases)) %>%
       magrittr::set_colnames(unpredicted_kinases) %>%
@@ -122,7 +129,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
 
   # Sort kinase columns
   wide_data <- wide_data %>%
-    dplyr::relocate(dplyr::all_of(sort(netphorest_kinase_names)), .after = dplyr::last_col())
+    dplyr::relocate(dplyr::all_of(sort(netphorest_known_kinases)), .after = dplyr::last_col())
 
   return(wide_data)
 }
@@ -215,7 +222,7 @@ read_netphorest <- function(path, return_long = FALSE, split_fasta_header = FALS
 #' filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = FALSE)
 #'
 #' ## Or return the true value by integrating outside site data, like extracted from the fasta header:
-#' ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_site', 'orig_res'), '\\|(\\w)(\\d{1,4})$',
+#' ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_res', 'orig_site'), '\\|(\\w)(\\d{1,4})$',
 #'                                        remove = FALSE, convert = TRUE)
 #'
 #' filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
@@ -261,7 +268,6 @@ filter_netphorest <- function(data,
                          start = ceiling(nchar(.data[[seq_col]])/2),
                          end = ceiling(nchar(.data[[seq_col]])/2))))}
     data <- dplyr::filter(data, toupper(.data[[detected_res_col]]) == toupper(.data[[protein_res_col]]))
-    print(data)
   }
 
   # Prep: group and separate data

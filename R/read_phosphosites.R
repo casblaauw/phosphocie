@@ -156,7 +156,7 @@ read_kinsub <- function(path) {
 #'
 filter_phosphosites <- function(data, organism_col = 'organism', acc_id_col = 'acc_id') {
   uniprot_regex <- '^[OPQ][0-9][A-Z0-9]{3}[0-9]?-?\\d{1,3}$|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$'
-  phosphosite %>%
+  data %>%
     dplyr::filter(tolower(.data[[organism_col]]) == 'human') %>%
-    dplyr::filter(str_detect(.data[[acc_id_col]], uniprot_regex))
+    dplyr::filter(stringr::str_detect(.data[[acc_id_col]], uniprot_regex))
 }

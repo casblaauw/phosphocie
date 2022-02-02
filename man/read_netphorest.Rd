@@ -4,7 +4,12 @@
 \alias{read_netphorest}
 \title{Read in NetPhorest prediction output}
 \usage{
-read_netphorest(path, return_long = FALSE, split_fasta_header = FALSE)
+read_netphorest(
+  path,
+  return_long = FALSE,
+  id_pattern = NULL,
+  split_fasta_header = FALSE
+)
 }
 \arguments{
 \item{path}{Path to the netphorest output file}
@@ -12,6 +17,9 @@ read_netphorest(path, return_long = FALSE, split_fasta_header = FALSE)
 \item{return_long}{Optional boolean: whether to return the data in long format
 (kinases on rows, like raw data), or whether to widen data (kinases as columns,
 for use with U-CIE). Default is false (return wide)}
+
+\item{id_pattern}{Optional character value: replaces \code{fasta_id} column with the
+\code{\link[glue:glue]{glue::glue()}} pattern supplied. Current id column can be incorporated with '{fasta_id}'.}
 
 \item{split_fasta_header}{Optional boolean: whether to try and extract data
 from the fasta header, like accession ID, gene name, and original site residue.
