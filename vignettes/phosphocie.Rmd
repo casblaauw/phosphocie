@@ -1,0 +1,217 @@
+---
+title: "phosphocie: creating kinase colour representations from phosphosites"
+author: "Cas Blaauw"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{phosphocie}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## 0. Overview
+`phosphocie` is a package to create kinase colour embeddings: continuous colours that 
+denote kinase specificities for a phosphorylation site. These colour embeddings are
+based on the [U-CIE framework](https://doi.org/10.1101/2021.12.02.470966):
+reduce data down to 3 dimensions and optimally embed it in the CIELAB colourspace.
+Specifically, `phosphocie` provides functions to handle phosphorylation site data,
+create kinase prediction tool input files, handle the resulting kinase prediction output,
+and 
+a pre-trained kinase colourspace based on the full [PhosphoSitePlus](https://www.phosphosite.org/) phosphorylation site dataset
+
+In this vignette, we will demonstrate `phosphocie` using the kinase-substrate-annotated 
+phosphorylation site dataset, from [PhosphoSitePlus](https://www.phosphosite.org/). 
+
+```{r setup}
+library(phosphocie)
+library(dplyr)
+library(ggplot2)
+library(umap)
+```
+
+## 1. Prepare phosphorylation site data
+### Read in phosphorylation site data
+
+
+The base data can be loaded in with `read_kinsub()` and filtered to valid human sequences
+with `filter_phosphosites()`:
+
+```{r}
+kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub <- read_kinsub(kinsub_path)
+kinsub_human <- filter_phosphosites(kinsub)
+
+head(kinsub_human)
+```
+
+### Build FASTAs
+`build_fastas()` creates a FASTA file with a separate FASTA entry (header and sequence)
+for each site, which can be used for input in NetPhorest. 
+
+```{r}
+tmp <- tempdir()
+build_fastas(kinsub_human, name_col = 'unique_id', seq_col = 'fragment_15', path = file.path(tmp, 'kinsub_human_peptides.fasta'))
+```
+
+Alternatively, `retrieve_fastas()` retrieves full fasta files for a list of accession IDs.
+However, `phosphocie` is geared towards visualising kinase predictions for individual, 
+possibly unidentified sites, so this option is not recommended and requires more manual processing
+to work with the follow-up functions.
+
+```{r, eval = FALSE}
+retrieve_fastas(kinsub_human$acc_id, file.path(tmp, 'kinsub_human.fasta'))
+```
+
+## Predict kinases
+
+Kinase prediction can be done with your tool of choice, but phosphocie natively supports
+NetPhorest. For details on how to run NetPhorest locally, see [the NetPhorest site](http://netphorest.info/download.shtml).
+
+```{}
+# Run NetPhorest
+cat kinsub_human.fasta | ./netphorest > kinsub_human_netphorest
+```
+
+This output file is also included in the package, and can be read in using 
+`read_netphorest()` and `filter_netphorest()`:
+```{r}
+kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
+kinsub_netphorest_raw <- read_netphorest(kinsub_netphorest_path) 
+
+kinsub_netphorest <- filter_netphorest(kinsub_netphorest_raw, source_window_size = 15)
+```
+
+`filter_netphorest()` attempts to filter out sites in our sequences from `build_fasta()` 
+that were detected by NetPhorest, but that aren't the true intended sites in the middle
+of the supplied sequence window. 
+It can determine conclusive sites for any non-truncated windows or windows truncated by the 
+end of the protein, but struggles to distinguish between true sites at the start of a protein
+and false sites at the beginning of the window.
+
+For example, we can take a look at the uncertain ID in this data:
+```{r}
+uncertain <- kinsub_netphorest_raw %>% filter(fasta_id == 'P13796|LCP1|L-plastin|S5')
+uncertain
+```
+
+We know from the metadata encoded in `fasta_id` that S5 is the true site.
+It's not at position 8, where we normally expect sites in data with a `source_window_size`
+of 15 like PhosphoSitePlus, because the original 'filler' was truncated.
+However, without this metadata knowledge, it's impossible to distinguish this site
+from a fake detected site at the start of a window, in which case position 7 would 
+be the better option.
+
+It is possible to use this metadata to improve filtering:
+```{r}
+uncertain %>%
+  tidyr::extract(fasta_id, c('orig_res', 'orig_site'), '\\|(\\w)(\\d{1,4})$', remove = FALSE, convert = TRUE) %>% 
+  filter_netphorest(source_window_size = 15, protein_res_col = 'orig_res', protein_pos_col = 'orig_site')
+```
+
+* `protein_res_col` generally reduces the chance of ambiguities by filtering out 
+sites that don't match the true residue. 
+* `protein_pos_col` helps specifically for starting sites: if the site index in the protein
+from metadata matches the position in the fragment, the fragment is from one of the first
+8 sites and the proper site can be selected instantly, bypassing the search for the residue
+closest to the middle. The extra information from argument solves the ambiguity in our example,
+and there is no message about ambiguities anymore.  
+
+If this metadata is not (completely) available, `keep_uncertain` determines how remaining uncertainties are handled:
+* `keep_uncertain = NULL` (default): Keep the site closest to the middle.
+* `keep_uncertain = TRUE`: Don't filter uncertain sites, and keep all possibilities instead.
+* `keep_uncertain = FALSE`: Drop any uncertain sites completely, only return sites with certainty.
+
+```{r}
+uncertain %>% filter_netphorest(15, keep_uncertain = NULL)
+uncertain %>% filter_netphorest(15, keep_uncertain = TRUE)
+uncertain %>% filter_netphorest(15, keep_uncertain = FALSE)
+```
+
+
+## Create colour embeddings
+
+### Join together the original data and kinase predictions
+
+We match by the ID column, which is the primary identifier carried over from original data
+to the prediction file. 
+
+However, if these are distinct but both contain information that can
+be used to match (like gene/protein name, accession id, original protein location/residue), 
+this information can be extracted using a function like `tidyr::separate()` and the resulting
+columns can be used to match as well (i.e. `by = c('acc_id', 'position', 'residue')`)
+
+```{r}
+kinsub_full <- left_join(kinsub_human, kinsub_netphorest, by = c('unique_id' = 'fasta_id')) 
+kinsub_missing <- kinsub_full %>% filter(is.na(fragment_11)) # Data for which no prediction could be recovered
+kinsub_full <- kinsub_full %>% filter(!is.na(fragment_11))
+```
+
+### Separate data into labels and predictions
+
+```{r}
+kinsub_preds <- select(kinsub_full, unique_id, Abl_group:YSK_group) %>% 
+  tibble::column_to_rownames('unique_id') %>% 
+  as.matrix()
+kinsub_info <- select(kinsub_full, -c(Abl_group:YSK_group))
+```
+
+### Transform data using the reference U-CIE space
+
+This package includes a pre-calculated kinase colour embedding space, based on 
+NetPhorest kinase predictions for all sites in [PhosphoSitePlus](https://www.phosphosite.org/)'s
+phosphorylation site dataset.
+
+```{r}
+# Transform with reference UMAP
+kinsub_preds_3d <- predict(ref_umap, kinsub_preds)
+
+# Transform with reference U-CIE
+kinsub_ucie <- kinase2cielab(kinsub_preds_3d, ref_transform)$hex
+```
+
+### Alternative: transform into standalone U-CIE space
+
+We can also fit your dataset to a new colourspace, based solely on (the 3D representation of) the dataset.
+```{r, eval = FALSE}
+umap_settings_3d <- umap::umap.defaults
+umap_settings_3d$n_components <- 3
+kinsub_umap_3d <- umap::umap(kinsub_preds, umap_settings_3d)
+
+kinsub_transformations <- ucie_transformations(kinsub_umap_3d$layout)
+kinsub_ucie <- kinase2cielab(kinsub_umap_3d$layout, kinsub_transformations)$hex
+```
+
+
+## Visualise kinase colour embeddings
+
+### Reduce data to 2D
+```{r}
+kinsub_umap_2d <- umap(kinsub_preds, umap.defaults)
+kinsub_2d <- kinsub_umap_2d$layout %>% magrittr::set_colnames(c('X', 'Y')) 
+kinsub_plot_data <- bind_cols(kinsub_info, kinsub_2d, ucie = kinsub_ucie)
+```
+
+### Create plots
+```{r}
+kinsub_plot_data %>% 
+  slice_sample(n = 1000) %>% 
+  ggplot(aes(X, Y, color = ucie)) + 
+  geom_point(size = 3) + 
+  scale_color_identity() + 
+  guides(color = 'none')
+
+kinsub_plot_data %>% 
+  mutate(kin_gene = forcats::fct_lump_n(kin_gene, 15)) %>% 
+  ggplot(aes(X, Y, color = ucie)) + 
+  geom_point(size = 3) + 
+  scale_color_identity() + 
+  guides(color = 'none') + 
+  facet_wrap(~kin_gene)
+```
+
