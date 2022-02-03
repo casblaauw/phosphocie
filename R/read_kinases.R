@@ -243,7 +243,7 @@ filter_netphorest <- function(data,
   }
 
   if (missing(netphorest_window_size)) {
-    netphorest_window_size <- round(mean(nchar(data[[seq_col]])), 0)
+    netphorest_window_size <- quantile(nchar(data[[seq_col]]), 0.8)
   }
 
   # Optional step 1: Match proposed site residues to true site residues
@@ -296,12 +296,12 @@ filter_netphorest <- function(data,
   # new_mid = midpoint - (n_dash - max(0, position + half_window_width - source_window_size_size))
   step3 <- nonunique_data %>%
     dplyr::mutate(
-      step3_shift = dplyr::if_else(
-        stringr::str_ends(.data[[seq_col]], '-'),
-        stringr::str_count(.data[[seq_col]], '-') - pmax(0, .data[[pos_col]] + floor(netphorest_window_size/2) - source_window_size),
-        0
-      ),
-      step3_mid = ceiling(source_window_size/2) - .data[['step3_shift']],
+      # step3_shift = dplyr::if_else(
+      #   stringr::str_ends(.data[[seq_col]], '-'),
+      #   stringr::str_count(.data[[seq_col]], '-') - pmax(0, .data[[pos_col]] + floor(netphorest_window_size/2) - source_window_size),
+      #   0
+      # ),
+      step3_mid = ceiling(source_window_size/2), #- .data[['step3_shift']],
       step3 = .data[[pos_col]] == .data[['step3_mid']]
     )
   unique_data <- step3 %>%
