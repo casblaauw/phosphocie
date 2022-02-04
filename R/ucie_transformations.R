@@ -28,6 +28,8 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' as calculated by [ucie_transformations()].
 #' @param LAB_coordinates Optional: boolean, whether to return CIELAB coordinates instead of RGB codes.
 #' @param rownames_col Optional: name of column to ignore during calculations.
+#' @param fix Optional: boolean, whether to force points outside the colour space inside (TRUE)
+#' or return NA (FALSE). Default is TRUE.
 #'
 #' @details `dataset` can be a 2D or 3D matrix or data frame, with optional
 #'   rownames in the first column or a `rownames_col`-defined column.
@@ -36,7 +38,7 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' @export
 #'
 #' @examples
-kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rownames_col = NULL) {
+kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE) {
 
   # Prep dataset
   dataset <- prep_ucie_data(dataset, rownames_col = rownames_col)
@@ -56,7 +58,7 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
     return(col_coords)
   } else {
     # Turn hex character vector into a data frame
-    col_hex <- colorspace::hex(colorspace_obj, fixup = TRUE) %>%
+    col_hex <- colorspace::hex(colorspace_obj, fixup = fix) %>%
       data.frame(hex = .) %>%
       tibble::rownames_to_column('rownames')
     return(col_hex)

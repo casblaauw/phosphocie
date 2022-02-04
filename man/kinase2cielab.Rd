@@ -8,7 +8,8 @@ kinase2cielab(
   dataset,
   transform_vals,
   LAB_coordinates = FALSE,
-  rownames_col = NULL
+  rownames_col = NULL,
+  fix = TRUE
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ as calculated by \code{\link[=ucie_transformations]{ucie_transformations()}}.}
 \item{LAB_coordinates}{Optional: boolean, whether to return CIELAB coordinates instead of RGB codes.}
 
 \item{rownames_col}{Optional: name of column to ignore during calculations.}
+
+\item{fix}{Optional: boolean, whether to force points outside the colour space inside (TRUE)
+or return NA (FALSE). Default is TRUE.}
 }
 \value{
 
