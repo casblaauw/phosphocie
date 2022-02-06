@@ -2,7 +2,6 @@
 
 export(build_fastas)
 export(filter_netphorest)
-export(filter_phosphosites)
 export(kinase2cielab)
 export(read_kinsub)
 export(read_ksp)

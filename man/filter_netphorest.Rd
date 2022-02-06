@@ -6,22 +6,19 @@
 \usage{
 filter_netphorest(
   data,
-  source_window_size,
   name_col = "fasta_id",
   seq_col = "fragment_11",
   pos_col = "position",
-  protein_res_col = NULL,
-  detected_res_col = NULL,
-  protein_pos_col = NULL,
-  netphorest_window_size,
+  fragment_col = NULL,
+  match_fragments = TRUE,
+  source_window_size,
+  match_middle = TRUE,
   keep_uncertain = NULL
 )
 }
 \arguments{
 \item{data}{Data frame with data with one possible site per row (wide format),
 presumably from \code{\link[=read_netphorest]{read_netphorest()}}.}
-
-\item{source_window_size}{Length of the original site window sequences fed to NetPhorest.}
 
 \item{name_col}{Name of column containing 'true' site names.
 Data will be filtered down to one row in every group denoted by this column.
@@ -33,28 +30,24 @@ Default is 'fragment_11'.}
 \item{pos_col}{Name of column containing position of detected site in
 NetPhorest FASTA sequence. Default is 'position'.}
 
-\item{protein_res_col}{Optional: name of column containing residue of true site
-in NetPhorest FASTA sequence. If provided, used to filter out obvious false
-detected sites by comparing with detected residue (see details).}
+\item{fragment_col}{Optional: name of column containing sequence fragments
+surrounding the true site, as generally extracted from the header column.
+If not supplied and \code{match_fragments} is TRUE (both default), will attempt
+to extract the fragments from \code{name_col} by extracting the last letter/underscore
+characters from the fasta header.}
 
-\item{detected_res_col}{Optional: name of column containing residue of detected site
-in NetPhorest FASTA sequence. If provided, used to filter out obvious false
-detected sites by checking against true residue from \code{protein_res_col} (see details).
-Requires \code{protein_res_col} too. If missing, inferred from \code{seq_col}.}
+\item{source_window_size}{Length of the original site window sequences fed to NetPhorest.}
 
-\item{protein_pos_col}{Optional: name of column containing original position
-in the protein. If provided, used to filter sites at start of protein (see details)}
-
-\item{netphorest_window_size}{Width of sequence windows in seq_col.
-If missing, inferred from \code{seq_col} widths.}
-
-\item{keep_uncertain}{One of TRUE/FALSE/NULL. Some choices can be uncertain,
-especially if there is no extra information from \code{protein_pos_col} or \code{protein_res_col},
-(see details).
+\item{keep_uncertain}{One of TRUE/FALSE/NULL (default). Some choices can be uncertain,
+especially if there is no extra information from fragments (see details).
 If \code{keep_uncertain} = TRUE, all possible uncertain values are kept;
 if \code{keep_uncertain} = FALSE, all uncertain groups are fully dropped;
 if \code{keep_uncertain} = NULL (default), a best guess is made based on proximity
 to the midpoint of the sequence.}
+
+\item{match_fragments:}{Optional: Whether to use fragments to match the detected site
+to the true site. Fragments can be any uneven length and are either extracted
+from the name column or directly used from \code{fragment_col}. Default is TRUE.}
 }
 \value{
 The original dataset, without incorrect sites. Global row order is not preserved.
@@ -76,17 +69,8 @@ limitations in NetPhorest's output. Set \code{keep_uncertain} to handle these.
 \details{
 This function will work with just the default netphorest output data
 of \code{name_col}, \code{seq_col} and \code{pos_col}. However, filtering can be improved by providing
-the true residue of the site (\code{protein_res_col}) (and optionally the detected site residue
-\code{detected_res_col} manually) and/or the original position in the full protein (\code{protein_pos_col}).
-\describe{
-\item{\code{protein_res_col}/\code{detected_res_col}}{The columns from these two arguments are
-compared against eachother, throwing out all detected sites that aren't the true residue.}
-\item{\code{protein_pos_col}}{The column from this argument is compared to the intra-sequence
-position from \code{pos_col}. If they match, the true site is from the start of the protein
-and the proper detected site can be matched. Otherwise, these early sites will be
-indistinguishable from erroneous detected sites at the left edge of the netphorest window,
-which are generally discarded (as we expect the site to be in the middle of the netphorest window).}
-}
+the section around the true site (fragment), either extracted by default (\code{fragment_col}
+kept as NULL) or from a separate column (\code{fragment_col} supplied).
 }
 \examples{
 # Default usage
@@ -95,7 +79,7 @@ kinsub_netphorest <- read_netphorest(kinsub_netphorest_path)
 kinsub_filtered <- filter_netphorest(kinsub_netphorest, source_window_size = 15)
 
 # Handle ambiguous sites
-ambiguous_data <- data.frame(id = c("P13796|LCP1|L-plastin|S5", "P13796|LCP1|L-plastin|S5"),
+ambiguous_data <- data.frame(id = c("P13796|LCP1|L-plastin|S5|RGSVS", "P13796|LCP1|L-plastin|S5|RGSVS"),
                              pos = c(5, 7),
                              seq = c("-MARGsVSDEE", "ARGSVtDEEMM"))
 
@@ -106,17 +90,17 @@ filter_netphorest(ambiguous_data,
                   name_col = 'id',
                   seq_col = 'seq',
                   pos_col = 'pos',
-                  source_window_size = 15)
+                  match_fragments = FALSE)
 
 ## Return all or none instead with `keep_uncertain`
-filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = TRUE)
-filter_netphorest(ambiguous_data, 15, 'id', 'seq', 'pos', keep_uncertain = FALSE)
+filter_netphorest(ambiguous_data, 'id', 'seq', 'pos', match_fragments = FALSE, keep_uncertain = TRUE)
+filter_netphorest(ambiguous_data, 'id', 'seq', 'pos', match_fragments = FALSE, keep_uncertain = FALSE)
 
-## Or return the true value by integrating outside site data, like extracted from the fasta header:
-ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, c('orig_res', 'orig_site'), '\\\\|(\\\\w)(\\\\d{1,4})$',
+## Or return the true value by integrating data from the fasta header, manually or automatic:
+ambiguous_data_extra <- tidyr::extract(ambiguous_data, id, 'fragment', '\\\\|([A-Za-z_]{3,9})$',
                                        remove = FALSE, convert = TRUE)
 
-filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_res_col = 'orig_res')
-filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', protein_pos_col = 'orig_site')
+filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos')
+filter_netphorest(ambiguous_data_extra, 15, 'id', 'seq', 'pos', fragment_col = 'fragment')
 
 }

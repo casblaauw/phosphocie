@@ -31,13 +31,8 @@ build_fastas(
 # system('cat PhosphoSitePlus/phosphosite_human_peptides.fasta | .PhosphoSitePlus/netphorest > PhosphoSitePlus/phosphosite_human_netphorest')
 
 # Read in predictions
-netphorest_kinase <- read_netphorest('PhosphoSitePlus/phosphosite_human_netphorest', split_fasta_header = TRUE)
-netphorest_kinase <- filter_netphorest(netphorest_kinase,
-                                       source_window_size = 15,
-                                       protein_res_col = 'orig_res',
-                                       protein_pos_col = 'orig_pos',
-                                       detected_res_col = 'residue',
-                                       keep_uncertain = FALSE)
+netphorest_kinase <- read_netphorest('PhosphoSitePlus/phosphosite_human_netphorest')
+netphorest_kinase <- filter_netphorest(netphorest_kinase, source_window_size = 15, keep_uncertain = FALSE)
 
 # Create reference UMAP
 umap_settings <- umap.defaults

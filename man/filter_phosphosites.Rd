@@ -19,3 +19,4 @@ The filtered data frame.
 \description{
 Filters out rows from non-human organisms or with non-uniprot-conformant accession ids.
 }
+\keyword{internal}

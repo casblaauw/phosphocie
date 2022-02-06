@@ -7,8 +7,7 @@
 read_netphorest(
   path,
   return_long = FALSE,
-  id_pattern = NULL,
-  split_fasta_header = FALSE
+  cols_to_keep = c("fasta_id", "position", "residue", "fragment_11")
 )
 }
 \arguments{
@@ -18,19 +17,15 @@ read_netphorest(
 (kinases on rows, like raw data), or whether to widen data (kinases as columns,
 for use with U-CIE). Default is false (return wide)}
 
-\item{id_pattern}{Optional character value: replaces \code{fasta_id} column with the
-\code{\link[glue:glue]{glue::glue()}} pattern supplied. Current id column can be incorporated with '{fasta_id}'.}
-
-\item{split_fasta_header}{Optional boolean: whether to try and extract data
-from the fasta header, like accession ID, gene name, and original site residue.
-Supports UniProt FASTA headers (acc_id, protein) and \code{\link[=build_fastas]{build_fastas()}} headers
-(acc_id, gene, protein, protein_res_col, protein_pos_col).}
+\item{cols_to_keep}{Columns to keep when pivoting to wide data.
+By default, keeps 'fasta_id', 'position', 'residue', and 'fragment_11',
+and drops 'method', 'organism', and 'binder_type'.}
 }
 \value{
 A tibble with site/protein data and kinase scores
 }
 \description{
-Read in NetPhorest prediction output
+Read in NetPhorest input. Keeps only kinase scores.
 }
 \examples{
 kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')

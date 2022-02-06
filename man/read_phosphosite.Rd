@@ -14,7 +14,7 @@ Wrapper around \code{\link[readr:read_delim]{readr::read_tsv()}} that cleans up 
 site data to have nicer columns, cleaner values, and a prepared unique site ID.
 }
 \examples{
-phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
+phosphosite_path <- system.file('extdata', 'phosphorylation_site_dataset_head', package = 'phosphocie')
 phosphosite <- phosphocie:::read_phosphosite(phosphosite_path)
 
 }

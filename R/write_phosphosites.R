@@ -137,42 +137,48 @@ retrieve_fastas <- function(uniprot_acc, path) {
 #' Create a FASTA file with sequence fragments
 #'
 #' From (potential) sites and their surrounding amino acids, create a FASTA-conforming file.
-#' Requires a column of unique names for each site.
+#' Requires a column of unique header values for each site.
 #'
 #'
 #' @param data Data frame in long format, containing unique names and sequence windows.
 #' @param path Path to write the file to, including file name and extension.
-#' @param name_col Name of the column that contains unique fasta IDs.
-#'   If missing, uses name_pattern to construct unique IDs.
+#' @param name_col Name of the column that contains metadata about the sequence.
+#'   Used as a part of header_pattern by default
+#'   If missing, uses header_pattern to construct unique IDs.
 #' @param seq_col Name of the column that contains the sequence windows.
-#' @param name_pattern Optional, only used if `name_col` is missing.
-#'   Pattern for use in [glue::glue()], used to construct a new unique name column
-#'   based on current columns.
+#' @param header_pattern Pattern for use in [glue::glue()], used to construct a new unique header column
+#'   based on current columns. Default uses name_col and appends 5 aa window
+#'   around site for unique identification by [read_netphorest()].
+#'   Any whitespace will be replaced by underscores.
 #'
 #' @return Returns path of the output FASTA, invisibly.
 #' @export
 #'
 #' @examples
-#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 #' kinsub <- read_kinsub(kinsub_path)
 #' tmp <- tempfile()
 #'
 #' build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')
 #'
-#' build_fastas(kinsub, tmp, seq_col = 'fragment_15', name_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
+#' build_fastas(kinsub, tmp, seq_col = 'fragment_15', header_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
 
-build_fastas <- function(data, path, name_col, seq_col, name_pattern = NULL) {
+build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data[[name_col]]}|{toupper(stringr::str_sub(.data[[seq_col]], ceiling(nchar(.data[[seq_col]])/2)-3, ceiling(nchar(.data[[seq_col]])/2)+3))}') {
 
-  # Create name column if missing
   if (missing(name_col)) {
-    if (is.null(name_pattern)) {
-      rlang::abort('Either name_col or name_pattern must be supplied.')
+    if (stringr::str_detect(header_pattern, 'name_col')) {
+      rlang::abort('If name_col is not supplied, header_pattern cannot refer to name_col and must be changed.')
     }
-    data <- dplyr::mutate(data, build_fasta_id = glue::glue(name_pattern))
-    name_col <- 'build_fasta_id'
-    if (anyDuplicated(data[[name_col]]) > 0) {
-      rlang::abort('Name column created with name_pattern is not unique, please supply a different pattern.')
-    }
+  }
+  # Create header column
+  data <- dplyr::mutate(data, fasta_header = glue::glue(header_pattern))
+  if (any(stringr::str_detect(data$fasta_header, '\\s'))) {
+    data <- dplyr::mutate(data, fasta_header = stringr::str_replace_all(glue::glue(header_pattern), '\\s', '_'))
+    warning('Any whitespaces in the fasta headers have been replaced by underscores.')
+  }
+  name_col <- 'fasta_header'
+  if (anyDuplicated(data[[name_col]]) > 0) {
+    rlang::abort('Name column created with header_pattern is not unique, please supply a different pattern.')
   }
 
   # Check column names and data

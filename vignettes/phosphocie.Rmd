@@ -22,8 +22,8 @@ based on the [U-CIE framework](https://doi.org/10.1101/2021.12.02.470966):
 reduce data down to 3 dimensions and optimally embed it in the CIELAB colourspace.
 Specifically, `phosphocie` provides functions to handle phosphorylation site data,
 create kinase prediction tool input files, handle the resulting kinase prediction output,
-and 
-a pre-trained kinase colourspace based on the full [PhosphoSitePlus](https://www.phosphosite.org/) phosphorylation site dataset
+and a pre-trained kinase colourspace based on the full 
+[PhosphoSitePlus](https://www.phosphosite.org/) phosphorylation site dataset
 
 In this vignette, we will demonstrate `phosphocie` using the kinase-substrate-annotated 
 phosphorylation site dataset, from [PhosphoSitePlus](https://www.phosphosite.org/). 
@@ -43,9 +43,8 @@ The base data can be loaded in with `read_kinsub()` and filtered to valid human 
 with `filter_phosphosites()`:
 
 ```{r}
-kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 kinsub <- read_kinsub(kinsub_path)
-kinsub_human <- filter_phosphosites(kinsub)
 
 head(kinsub_human)
 ```
@@ -81,7 +80,7 @@ cat kinsub_human.fasta | ./netphorest > kinsub_human_netphorest
 This output file is also included in the package, and can be read in using 
 `read_netphorest()` and `filter_netphorest()`:
 ```{r}
-kinsub_netphorest_path <- system.file('extdata', 'kinsub_human_netphorest', package = 'phosphocie')
+kinsub_netphorest_path <- system.file('extdata', 'kinsub_head_netphorest', package = 'phosphocie')
 kinsub_netphorest_raw <- read_netphorest(kinsub_netphorest_path) 
 
 kinsub_netphorest <- filter_netphorest(kinsub_netphorest_raw, source_window_size = 15)
@@ -92,11 +91,11 @@ that were detected by NetPhorest, but that aren't the true intended sites in the
 of the supplied sequence window. 
 It can determine conclusive sites for any non-truncated windows or windows truncated by the 
 end of the protein, but struggles to distinguish between true sites at the start of a protein
-and false sites at the beginning of the window.
+and false sites at the beginning of the window without additional data.
 
-For example, we can take a look at the uncertain ID in this data:
+For example, we can take a look at one uncertain ID in this data:
 ```{r}
-uncertain <- kinsub_netphorest_raw %>% filter(fasta_id == 'P13796|LCP1|L-plastin|S5')
+uncertain <- kinsub_netphorest_raw %>% filter(fasta_id == 'P13796|LCP1|L-plastin|S5|ARGSVSD')
 uncertain
 ```
 
@@ -107,30 +106,36 @@ However, without this metadata knowledge, it's impossible to distinguish this si
 from a fake detected site at the start of a window, in which case position 7 would 
 be the better option.
 
-It is possible to use this metadata to improve filtering:
+By default, `filter_netphorest()` will use the included site fragment included in the
+fasta header by `build_fastas()` to detect the true site:
+
 ```{r}
 uncertain %>%
   tidyr::extract(fasta_id, c('orig_res', 'orig_site'), '\\|(\\w)(\\d{1,4})$', remove = FALSE, convert = TRUE) %>% 
   filter_netphorest(source_window_size = 15, protein_res_col = 'orig_res', protein_pos_col = 'orig_site')
+
+uncertain %>%
+  filter_netphorest(source_window_size = 15)
 ```
 
-* `protein_res_col` generally reduces the chance of ambiguities by filtering out 
-sites that don't match the true residue. 
-* `protein_pos_col` helps specifically for starting sites: if the site index in the protein
-from metadata matches the position in the fragment, the fragment is from one of the first
-8 sites and the proper site can be selected instantly, bypassing the search for the residue
-closest to the middle. The extra information from argument solves the ambiguity in our example,
-and there is no message about ambiguities anymore.  
+This can also be passed as a manual column:
 
-If this metadata is not (completely) available, `keep_uncertain` determines how remaining uncertainties are handled:
+```{r}
+uncertain %>%
+  tidyr::extract(fasta_id, 'fragment', '\\|([A-Za-z_-])$', remove = FALSE) %>% 
+  filter_netphorest(source_window_size = 15, fragment_col = 'fragment')
+```
+
+
+If this metadata is not available, `keep_uncertain` determines how remaining uncertainties are handled:
 * `keep_uncertain = NULL` (default): Keep the site closest to the middle.
 * `keep_uncertain = TRUE`: Don't filter uncertain sites, and keep all possibilities instead.
 * `keep_uncertain = FALSE`: Drop any uncertain sites completely, only return sites with certainty.
 
 ```{r}
-uncertain %>% filter_netphorest(15, keep_uncertain = NULL)
-uncertain %>% filter_netphorest(15, keep_uncertain = TRUE)
-uncertain %>% filter_netphorest(15, keep_uncertain = FALSE)
+uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = NULL)
+uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = TRUE)
+uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = FALSE)
 ```
 
 

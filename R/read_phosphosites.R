@@ -7,7 +7,7 @@
 #' @export
 #'
 #' @examples
-#' phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
+#' phosphosite_path <- system.file('extdata', 'phosphorylation_site_dataset_head', package = 'phosphocie')
 #' phosphosite <- phosphocie:::read_phosphosite(phosphosite_path)
 #'
 read_phosphosite <- function(path) {
@@ -63,7 +63,8 @@ read_phosphosite <- function(path) {
         'mw_kd',
         'domain'
       )
-    ))
+    )) %>%
+    filter_phosphosites()
 }
 
 #' Read in PhosphoSitePlus kinase substrate data
@@ -75,7 +76,7 @@ read_phosphosite <- function(path) {
 #' @export
 #'
 #'@examples
-#' kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+#' kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 #' kinsub <- phosphocie:::read_kinsub(kinsub_path)
 #'
 read_kinsub <- function(path) {
@@ -140,7 +141,8 @@ read_kinsub <- function(path) {
         'in_vivo',
         'in_vitro'
       )
-    ))
+    )) %>%
+    filter_phosphosites()
 }
 
 #' Filter phosphosite data to human, uniprot-conformant data
@@ -152,7 +154,7 @@ read_kinsub <- function(path) {
 #' @param acc_id_col Optional: name of data column containing accession id data.
 #'
 #' @return The filtered data frame.
-#' @export
+#' @keywords internal
 #'
 filter_phosphosites <- function(data, organism_col = 'organism', acc_id_col = 'acc_id') {
   uniprot_regex <- '^[OPQ][0-9][A-Z0-9]{3}[0-9]?-?\\d{1,3}$|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$'

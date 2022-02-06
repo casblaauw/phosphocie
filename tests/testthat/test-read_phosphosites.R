@@ -1,5 +1,5 @@
-phosphosite_path <- system.file('extdata', 'Phosphorylation_Site_Dataset_head', package = 'phosphocie')
-kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+phosphosite_path <- system.file('extdata', 'phosphorylation_site_dataset_head', package = 'phosphocie')
+kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 # phosphosite <- read_phosphosite(phosphosite_path)
 
 test_that("read_phosphosite reads successfully", {

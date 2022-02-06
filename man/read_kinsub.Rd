@@ -14,7 +14,7 @@ Wrapper around \code{\link[readr:read_delim]{readr::read_tsv()}} that cleans up 
 data to have nicer columns, cleaner values, and a prepared unique site ID.
 }
 \examples{
-kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 kinsub <- phosphocie:::read_kinsub(kinsub_path)
 
 }

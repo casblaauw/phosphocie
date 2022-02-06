@@ -4,35 +4,44 @@
 \alias{build_fastas}
 \title{Create a FASTA file with sequence fragments}
 \usage{
-build_fastas(data, path, name_col, seq_col, name_pattern = NULL)
+build_fastas(
+  data,
+  path,
+  name_col,
+  seq_col,
+ 
+    header_pattern = "{.data[[name_col]]}|{toupper(stringr::str_sub(.data[[seq_col]], ceiling(nchar(.data[[seq_col]])/2)-3, ceiling(nchar(.data[[seq_col]])/2)+3))}"
+)
 }
 \arguments{
 \item{data}{Data frame in long format, containing unique names and sequence windows.}
 
 \item{path}{Path to write the file to, including file name and extension.}
 
-\item{name_col}{Name of the column that contains unique fasta IDs.
-If missing, uses name_pattern to construct unique IDs.}
+\item{name_col}{Name of the column that contains metadata about the sequence.
+Used as a part of header_pattern by default
+If missing, uses header_pattern to construct unique IDs.}
 
 \item{seq_col}{Name of the column that contains the sequence windows.}
 
-\item{name_pattern}{Optional, only used if \code{name_col} is missing.
-Pattern for use in \code{\link[glue:glue]{glue::glue()}}, used to construct a new unique name column
-based on current columns.}
+\item{header_pattern}{Pattern for use in \code{\link[glue:glue]{glue::glue()}}, used to construct a new unique header column
+based on current columns. Default uses name_col and appends 5 aa window
+around site for unique identification by \code{\link[=read_netphorest]{read_netphorest()}}.
+Any whitespace will be replaced by underscores.}
 }
 \value{
 Returns path of the output FASTA, invisibly.
 }
 \description{
 From (potential) sites and their surrounding amino acids, create a FASTA-conforming file.
-Requires a column of unique names for each site.
+Requires a column of unique header values for each site.
 }
 \examples{
-kinsub_path <- system.file('extdata', 'Kinase_Substrate_Dataset_head', package = 'phosphocie')
+kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 kinsub <- read_kinsub(kinsub_path)
 tmp <- tempfile()
 
 build_fastas(kinsub, tmp, name_col = 'unique_id', seq_col = 'fragment_15')
 
-build_fastas(kinsub, tmp, seq_col = 'fragment_15', name_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
+build_fastas(kinsub, tmp, seq_col = 'fragment_15', header_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
 }
