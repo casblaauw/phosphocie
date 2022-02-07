@@ -323,13 +323,13 @@ filter_netphorest <- function(data,
   if (match_fragments) {
   nonunique_data$step1 <- toupper(nonunique_data$temp_site_surroundings) == toupper(nonunique_data[[fragment_col]])
   unique_data <- nonunique_data %>%
-    dplyr::filter(step1) %>%
+    dplyr::filter(step1 & sum(step1) == 1) %>%
     dplyr::ungroup() %>%
     dplyr::select(-dplyr::any_of(c('temp_fragment', 'temp_site_surroundings', 'step1'))) %>%
     dplyr::bind_rows(unique_data, .)
 
   nonunique_data <- nonunique_data %>%
-    dplyr::filter(!any(step1))
+    dplyr::filter(sum(step1) != 1)
   }
 
 
@@ -340,12 +340,12 @@ filter_netphorest <- function(data,
   if (match_middle) {
     nonunique_data$step2 = nonunique_data[[pos_col]] == ceiling(source_window_size/2)
     unique_data <- nonunique_data %>%
-      dplyr::filter(step2) %>%
+      dplyr::filter(step2 & sum(step2) == 1) %>%
       dplyr::select(-dplyr::starts_with('step')) %>%
       dplyr::ungroup() %>%
       dplyr::bind_rows(unique_data, .)
 
-    nonunique_data <- nonunique_data %>% dplyr::filter(!any(step2))
+    nonunique_data <- nonunique_data %>% dplyr::filter(sum(step2) != 1)
   }
 
   # Handle inconclusive sites
