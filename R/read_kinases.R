@@ -97,71 +97,6 @@ read_netphorest <- function(path, return_long = FALSE, cols_to_keep = c('fasta_i
   return(data)
 }
 
-read_netphorest_old <- function(path, return_long = FALSE, id_pattern = NULL, split_fasta_header = FALSE) {
-  # Load in knowledge about netphorest output
-  netphorest_colnames <- c('fasta_id', 'position', 'residue', 'fragment_11', 'method', 'organism', 'binder_type', 'kinase_fam', 'posterior', 'prior')
-  # netphorest_known_kinases is included as internal package object and can be generated with data-raw/extract_netphorest_kinases.R
-
-  # Read in data and keep only kinase predictions
-  data <- readr::read_tsv(path, col_names = netphorest_colnames, skip = 1, show_col_types = FALSE)
-  data <- dplyr::filter(data, binder_type == 'KIN')
-  data <- dplyr::distinct(data, .keep_all = TRUE)
-
-  # Option: replace id column by custom pattern
-  if (!is.null(id_pattern)){
-    data <- dplyr::mutate(data, fasta_id = glue::glue(id_pattern))
-  }
-
-  # Option: split fasta header into constituent components
-  if (split_fasta_header) {
-    # Detect fasta header type
-    ## Detect uniprot fasta if it starts with a database marker
-    if (mean(stringr::str_detect(head(data$fasta_id, 100), 'sp|tr\\|')) > 0.75) { # 75+% of data matches pattern
-      data <- tidyr::separate(data, fasta_id, c(NA, 'acc_id', 'uniprot_name'), sep = '\\|', remove = FALSE)
-      data <- tidyr::separate(data, uniprot_name, c('protein', NA), sep = '_')
-      ## Detect own fasta if it starts with a uniprot ID (6-10 word characters)
-    } else if (mean(stringr::str_detect(head(data$fasta_id, 100), '^\\w{6,10}\\|')) > 0.75) {
-      # data <- tidyr::separate(data, fasta_id, c('acc_id', 'gene', 'protein', 'orig_ptm_residue'), sep = '\\|', remove = FALSE)
-      # data <- tidyr::separate(data, orig_ptm_residue, c('orig_res', 'orig_pos'), sep = 1)
-      data <- tidyr::extract(data, fasta_id, c('orig_res', 'orig_pos'), '\\|([a-zA-Z])(\\d{1,5})$', remove = FALSE)
-      data <- dplyr::mutate(data, orig_pos = as.numeric(orig_pos))
-    } else {
-      rlang::abort(glue::glue('Could not detect fasta header format. Set split_fasta_header to FALSE to disable splitting. Header example: {data$fasta_id[1]}'))
-    }
-  }
-
-  # Option: return raw-ish long-format data
-  if (return_long) return(data)
-
-  # Check whether all kinases match known netphorest kinase families
-  unknown_kinases <- dplyr::filter(data, !kinase_fam %in% netphorest_known_kinases)
-  if (nrow(unknown_kinases) > 0) rlang::abort(glue::glue('Unknown kinases found: {paste(unknown_kinases$kinase_fam, collapse = ", ")}'))
-
-  # Reshape data into wide format
-  message('Reshaping data into wide matrix-like format, this might take a while.')
-  data <- tidyr::pivot_wider(
-    data,
-    id_cols = c(dplyr::all_of(c('fasta_id', 'position', 'residue', 'fragment_11')), dplyr::any_of(c('acc_id', 'gene', 'protein', 'orig_ptm_residue', 'orig_res', 'orig_pos'))),
-    names_from = kinase_fam,
-    values_from = posterior,
-    values_fill = 0
-  )
-
-  # Append empty columns for any kinases not listed
-  unpredicted_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% colnames(data)]
-  if (!rlang::is_empty(unpredicted_kinases)) {
-    empty_cols <- matrix(0, nrow = nrow(data), ncol = length(unpredicted_kinases)) %>%
-      magrittr::set_colnames(unpredicted_kinases) %>%
-      dplyr::as_tibble()
-    data <- dplyr::bind_cols(data, empty_cols)
-  }
-
-  # Sort kinase columns
-  data <- dplyr::relocate(data, dplyr::all_of(sort(netphorest_known_kinases)), .after = dplyr::last_col())
-
-  return(data)
-}
-
 
 #' Remove off-target NetPhorest sites
 #'
@@ -191,7 +126,7 @@ read_netphorest_old <- function(path, return_long = FALSE, id_pattern = NULL, sp
 #' @param fragment_col Optional: name of column containing sequence fragments
 #' surrounding the true site, as generally extracted from the header column.
 #' If not supplied and `match_fragments` is TRUE (both default), will attempt
-#' to extract the fragments from `name_col` by extracting the last letter/underscore
+#' to extract the fragments from `name_col` by extracting the last 3-9 letter/underscore/dash
 #' characters from the fasta header.
 #' @param match_fragments: Optional: Whether to use fragments to match the detected site
 #' to the true site. Fragments can be any uneven length and are either extracted
@@ -272,7 +207,7 @@ filter_netphorest <- function(data,
   if (match_fragments) {
     # Extract fragment from name with default pattern if not provided separately
     if (is.null(fragment_col)) {
-      data$temp_fragment <- stringr::str_extract(data[[name_col]], '[a-zA-Z_]{3,9}$')
+      data$temp_fragment <- stringr::str_extract(data[[name_col]], '[a-zA-Z_-]{3,9}$')
       fragment_col <- 'temp_fragment'
 
       if (anyNA(data$temp_fragment)) {
@@ -364,144 +299,6 @@ filter_netphorest <- function(data,
              "Consider using `match_fragments` to reduce ambiguity.)"),
       "")
 
-    # Filter, keep all, or discard data based on keep_uncertain
-    if (is.null(keep_uncertain)) {
-      uncertain_warn <- paste0("\nThe site closest to the center will be chosen. ",
-                               "Change `keep_uncertain` to adjust this behaviour.")
-      unique_data <- nonunique_data %>%
-        dplyr::filter(abs(.data[[pos_col]] - ceiling(source_window_size/2)) == min(abs(.data[[pos_col]] - ceiling(source_window_size/2)))) %>%
-        dplyr::select(-dplyr::starts_with('step')) %>%
-        dplyr::ungroup() %>%
-        dplyr::bind_rows(unique_data, .)
-    } else if (isTRUE(keep_uncertain)) {
-      uncertain_warn <- paste0("\nAll options for these groups will be retained. ",
-                               "Change `keep_uncertain` to adjust this behaviour.")
-      unique_data <- nonunique_data %>%
-        dplyr::select(-dplyr::starts_with('step')) %>%
-        dplyr::ungroup() %>%
-        dplyr::bind_rows(unique_data, .)
-    } else if (isFALSE(keep_uncertain)) {
-      uncertain_warn <- paste0("\nThese groups will be fully discarded. ",
-                               "Change `keep_uncertain` to adjust this behaviour.")
-    }
-    message(glue::glue(base_warn, uncertain_warn, extra_cols_warn))
-  }
-
-  return(unique_data)
-}
-
-
-filter_netphorest_old <- function(data,
-                              source_window_size,
-                              name_col = 'fasta_id',
-                              seq_col = 'fragment_11',
-                              pos_col = 'position',
-                              protein_res_col = NULL,
-                              detected_res_col = NULL,
-                              protein_pos_col = NULL,
-                              netphorest_window_size,
-                              keep_uncertain = NULL) {
-
-  # Prep: check parameters
-  submitted_cols <- c('name_col' = name_col,
-                      'seq_col' = seq_col,
-                      'pos_col' = pos_col,
-                      'protein_res_col' = protein_res_col,
-                      'detected_res_col' = detected_res_col,
-                      'protein_pos_col' = protein_pos_col)
-
-  if (!all(submitted_cols %in% colnames(data))) {
-    missing_cols <- submitted_cols[!submitted_cols %in% colnames(data)]
-    rlang::abort(glue::glue(
-      "Not all submitted column names are in the data.",
-      "Faulty: {paste(names(missing_cols), missing_cols, sep = ' = ', collapse = ', ')}"
-    ))
-  }
-
-  if (missing(netphorest_window_size)) {
-    netphorest_window_size <- quantile(nchar(data[[seq_col]]), 0.8)
-  }
-
-  # Optional step 1: Match proposed site residues to true site residues
-  if (!is.null(protein_res_col)) {
-    if (is.null(detected_res_col)) {
-      detected_res_col <- 'res_col_extract'
-      data <- dplyr::mutate(data, res_col_extract = toupper(
-        stringr::str_sub(.data[[seq_col]],
-                         start = ceiling(nchar(.data[[seq_col]])/2),
-                         end = ceiling(nchar(.data[[seq_col]])/2))))}
-    data <- dplyr::filter(data, toupper(.data[[detected_res_col]]) == toupper(.data[[protein_res_col]]))
-  }
-
-  # Prep: group and separate data
-  data <- data %>%
-    dplyr::group_by(.data[[name_col]])
-
-  unique_data <- data %>%
-    dplyr::filter(dplyr::n() == 1) %>%
-    dplyr::ungroup()
-
-  nonunique_data <- data %>%
-    dplyr::filter(dplyr::n() > 1)
-
-  # Optional step 2: For start-truncated sites, match full position to res position
-  if (!is.null(protein_pos_col)) {
-    step2 <- nonunique_data %>%
-      dplyr::mutate(step2 = .data[[pos_col]] == .data[[protein_pos_col]])
-
-    unique_data <- step2 %>%
-      dplyr::filter(step2) %>%
-      dplyr::ungroup() %>%
-      dplyr::select(-dplyr::starts_with('step')) %>%
-      dplyr::bind_rows(unique_data, .)
-
-    nonunique_data <- step2 %>%
-      dplyr::filter(!any(step2))
-  }
-
-  # Step 3/4: Find middle site.
-  # For end-truncated sites (i.e shorter sequences), use expected # of dashes to shift midpoint backwards
-  # For regular sites, just get middle site (ceiling(source_window_size/2), so site 8 for standard 15-width from phosphositeplus)
-
-  # If small view window extends beyond big window, expect filling dashes:
-  # expected_n_dashes = position + half_window_width - source_window_size_size
-  # Dashes cannot be negative, so
-  # expected_n_dashes = max(0, position + half_netphorest_window_size_width - source_window_size_size)
-  # If original sequence (source_window_size) was less than 15 seq, there will be more dashes than expected
-  # So shift the midpoint by difference between expected and observed:
-  # new_mid = midpoint - (n_dash - max(0, position + half_window_width - source_window_size_size))
-  step3 <- nonunique_data %>%
-    dplyr::mutate(
-      # step3_shift = dplyr::if_else(
-      #   stringr::str_ends(.data[[seq_col]], '-'),
-      #   stringr::str_count(.data[[seq_col]], '-') - pmax(0, .data[[pos_col]] + floor(netphorest_window_size/2) - source_window_size),
-      #   0
-      # ),
-      step3_mid = ceiling(source_window_size/2), #- .data[['step3_shift']],
-      step3 = .data[[pos_col]] == .data[['step3_mid']]
-    )
-  unique_data <- step3 %>%
-    dplyr::filter(step3) %>%
-    dplyr::select(-dplyr::starts_with('step')) %>%
-    dplyr::ungroup() %>%
-    dplyr::bind_rows(unique_data, .)
-
-  nonunique_data <- step3 %>% dplyr::filter(!any(step3))
-  # Handle inconclusive sites
-  if (nrow(nonunique_data) > 0) {
-    # Prepare warning text
-    nonunique_names <- unique(nonunique_data[[name_col]])
-    if (length(nonunique_names) > 50) {
-      nonunique_names <- c(nonunique_names[1:50], glue::glue('and {length(nonunique_names)-50} more.'))
-    }
-    base_warn <- paste0("Could not conclusively determine original site for IDs ",
-                        "{paste(nonunique_names, collapse = ', ')}.")
-    extra_cols_warn <- ifelse(
-      is.null(protein_res_col) | is.null(protein_pos_col),
-      paste0("\n(This generally happens for sites at the start of proteins. ",
-             "Consider providing `protein_res_col`, `detected_res_col` and/or `protein_pos_col` ",
-             "to reduce ambiguity.)"),
-      "")
     # Filter, keep all, or discard data based on keep_uncertain
     if (is.null(keep_uncertain)) {
       uncertain_warn <- paste0("\nThe site closest to the center will be chosen. ",

@@ -33,7 +33,7 @@ NetPhorest FASTA sequence. Default is 'position'.}
 \item{fragment_col}{Optional: name of column containing sequence fragments
 surrounding the true site, as generally extracted from the header column.
 If not supplied and \code{match_fragments} is TRUE (both default), will attempt
-to extract the fragments from \code{name_col} by extracting the last letter/underscore
+to extract the fragments from \code{name_col} by extracting the last 3-9 letter/underscore/dash
 characters from the fasta header.}
 
 \item{source_window_size}{Length of the original site window sequences fed to NetPhorest.}
