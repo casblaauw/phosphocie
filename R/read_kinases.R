@@ -313,7 +313,8 @@ filter_netphorest <- function(data,
 
   unique_data <- data %>%
     dplyr::filter(dplyr::n() == 1) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::select(-c(temp_fragment, temp_site_surroundings))
 
   nonunique_data <- data %>%
     dplyr::filter(dplyr::n() > 1)
