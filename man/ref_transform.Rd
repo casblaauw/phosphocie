@@ -23,8 +23,9 @@ A numeric vector, containing the 7 values needed to transform:
 ref_transform
 }
 \description{
-A numeric vector for use with \code{\link[=kinase2cielab]{kinase2cielab()}}, containing the transformations to
-go from a 3D representation made with \link[uwot:umap_transform(your_data, ref_umap)]{uwot::umap_transform(your_data, ref_umap)}
+A numeric vector for use with \code{\link[=kinase2cielab]{kinase2cielab()}}, containing the
+transformations to go from a 3D representation made with
+\href{uwot::umap_transform()}{\code{uwot::umap_transform(your_data, ref_umap)}}
 to colours in the CIELAB coordinate space.
 Based on the UMAP->UCIE transformation of the PhosphoSitePlus phosphorylation
 sites dataset, which contains almost 240000 phosphorylation sites.
