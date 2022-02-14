@@ -150,8 +150,9 @@ retrieve_fastas <- function(uniprot_acc, path) {
 #'   based on current columns. Default uses name_col and appends 5 aa window
 #'   around site for unique identification by [read_netphorest()].
 #'   Any whitespace will be replaced by underscores.
+#'   If set to NULL, `header_pattern` will just be '{name_col}'.
 #'
-#' @return Returns path of the output FASTA, invisibly.
+#' @return Returns the input data with new headers included as fasta_id, invisibly.
 #' @export
 #'
 #' @examples
@@ -165,18 +166,23 @@ retrieve_fastas <- function(uniprot_acc, path) {
 
 build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data[[name_col]]}|{toupper(stringr::str_sub(.data[[seq_col]], ceiling(nchar(.data[[seq_col]])/2)-3, ceiling(nchar(.data[[seq_col]])/2)+3))}') {
 
+  if (is.null(header_pattern)) {
+    header_pattern <- '{name_col}'
+  }
+
   if (missing(name_col)) {
     if (stringr::str_detect(header_pattern, 'name_col')) {
       rlang::abort('If name_col is not supplied, header_pattern cannot refer to name_col and must be changed.')
     }
   }
+
   # Create header column
-  data <- dplyr::mutate(data, fasta_header = glue::glue(header_pattern))
-  if (any(stringr::str_detect(data$fasta_header, '\\s'))) {
-    data <- dplyr::mutate(data, fasta_header = stringr::str_replace_all(glue::glue(header_pattern), '\\s', '_'))
+  data <- dplyr::mutate(data, fasta_id = glue::glue(header_pattern))
+  if (any(stringr::str_detect(data$fasta_id, '\\s'))) {
+    data$fasta_id <- stringr::str_replace_all(data$fasta_id, '\\s', '_')
     warning('Any whitespaces in the fasta headers have been replaced by underscores.')
   }
-  name_col <- 'fasta_header'
+  name_col <- 'fasta_id'
   if (anyDuplicated(data[[name_col]]) > 0) {
     rlang::abort('Name column created with header_pattern is not unique, please supply a different pattern.')
   }
@@ -207,5 +213,5 @@ build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data
   close(open_file)
 
   print(glue::glue('Successfully built fasta, saved at {path}'))
-  return(invisible(path))
+  return(invisible(data))
 }

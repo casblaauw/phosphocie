@@ -27,10 +27,11 @@ If missing, uses header_pattern to construct unique IDs.}
 \item{header_pattern}{Pattern for use in \code{\link[glue:glue]{glue::glue()}}, used to construct a new unique header column
 based on current columns. Default uses name_col and appends 5 aa window
 around site for unique identification by \code{\link[=read_netphorest]{read_netphorest()}}.
-Any whitespace will be replaced by underscores.}
+Any whitespace will be replaced by underscores.
+If set to NULL, \code{header_pattern} will just be '{name_col}'.}
 }
 \value{
-Returns path of the output FASTA, invisibly.
+Returns the input data with new headers included as fasta_id, invisibly.
 }
 \description{
 From (potential) sites and their surrounding amino acids, create a FASTA-conforming file.
