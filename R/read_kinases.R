@@ -204,6 +204,9 @@ filter_netphorest <- function(data,
     stop('In order to choose most middle site, source_window_size needs to be set.')
   }
 
+  # Deduplicate any fully duplicated rows
+  data <- dplyr::distinct(data)
+
   if (match_fragments) {
     # Extract fragment from name with default pattern if not provided separately
     if (is.null(fragment_col)) {
