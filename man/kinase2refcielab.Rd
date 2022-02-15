@@ -20,7 +20,7 @@ true rownames before continuing. Allows usage of tidy data in this matrix-based 
 or return NA (FALSE). Default is TRUE.}
 }
 \value{
-A data frame with
+A data frame with columns \code{names} and \code{colour}. Use colours with \code{\link[ggplot2:scale_identity]{ggplot2::scale_color_identity()}}.
 }
 \description{
 Get kinase score colours based on reference colourspace

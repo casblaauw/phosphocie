@@ -35,8 +35,8 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' @details `dataset` can be a 2D or 3D matrix or data frame, with optional
 #'   rownames in the first column or a `rownames_col`-defined column.
 #'
-#' @return Returns a named character vector of hex codes (or a data frame with a
-#' rownames column and coordinates, if `LAB_coordinates = TRUE`).
+#' @return Returns a data frame with names and hex codes in `name` and `colour`
+#' (or `name`/`L`/`a`/`b` if `LAB_coordinates = TRUE`).
 #' @export
 #'
 #' @examples
@@ -56,11 +56,13 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
     # Turn coordinates matrix into a data frame
     col_coords <- colorspace::coords(colorspace_obj) %>%
       as.data.frame() %>%
-      tibble::rownames_to_column('rownames')
+      tibble::rownames_to_column('name')
     return(col_coords)
   } else {
     # Turn hex character vector into a data frame
-    col_hex <- colorspace::hex(colorspace_obj, fixup = fix)
+    col_hex <- colorspace::hex(colorspace_obj, fixup = fix) %>%
+      data.frame(colour = .) %>%
+      tibble::rownames_to_column('name')
     return(col_hex)
   }
 
@@ -78,7 +80,7 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
 #' @param fix Optional: boolean, whether to force points outside the colour space inside (TRUE)
 #' or return NA (FALSE). Default is TRUE.
 #'
-#' @return A data frame with
+#' @return A data frame with columns `name` and `colour`. Use colours with [ggplot2::scale_color_identity()].
 #' @export
 #'
 #' @examples
@@ -97,7 +99,11 @@ kinase2refcielab <- function(data, k = 10, rownames_col = NULL, fix = TRUE) {
   # Get and average colours of nearest neighbours
   colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_ucie[indices_vec,])))
   colours <- colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE) %>%
-    setNames(rownames(data))
+    data.frame(colour = .)
+  if (!is.null(rownames(data))) {
+    rownames(colours) <- rownames(data)
+  }
+  colours <- tibble::rownames_to_column(colours, 'name')
   return(colours)
 }
 
