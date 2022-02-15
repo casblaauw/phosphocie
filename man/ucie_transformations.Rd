@@ -12,7 +12,8 @@ ucie_transformations(dataset, rownames_col = NULL)
 \item{rownames_col}{Optional: name of column to ignore during calculations.}
 }
 \value{
-Returns a numeric vector with a scaling value, 3 rotation values, and 3 translation values for use in \code{\link[=kinase2cielab]{kinase2cielab()}}.
+Returns a numeric vector with a scaling value (S), 3 rotation values
+(RotL, Rota, Rotb), and 3 translation values (TrL, Tra, Trb) for use in \code{\link[=kinase2cielab]{kinase2cielab()}}.
 }
 \description{
 Scales, rotates and transforms the data to best fit in the CIELAB colourspace.

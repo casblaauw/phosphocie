@@ -3,6 +3,7 @@
 export(build_fastas)
 export(filter_netphorest)
 export(kinase2cielab)
+export(kinase2refcielab)
 export(read_kinsub)
 export(read_ksp)
 export(read_netphorest)

@@ -4,12 +4,15 @@
 \alias{prep_ucie_data}
 \title{Check and reformat data for use with U-CIE functions}
 \usage{
-prep_ucie_data(dataset, rownames_col = NULL)
+prep_ucie_data(dataset, rownames_col = NULL, check_3D = TRUE)
 }
 \arguments{
 \item{dataset}{A data frame or matrix of 2D or 3D values.}
 
 \item{rownames_col}{Optional: name of column to ignore during calculations.}
+
+\item{check_3D}{Optional: whether to check and force 3D output. Needed for reduced/cielab data,
+not needed for KNN data.}
 }
 \description{
 Takes a 2D or 3D matrix or data frame and returns a 3D matrix, checked for non-numeric values.

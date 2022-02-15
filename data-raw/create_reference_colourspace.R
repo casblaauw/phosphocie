@@ -37,16 +37,30 @@ netphorest_kinase <- filter_netphorest(netphorest_kinase,
                                        keep_uncertain = FALSE)
 
 # Create reference UMAP
-netphorest_kinase <- netphorest_kinase %>%
+ref_kinase <- netphorest_kinase %>%
   tibble::column_to_rownames('fasta_id') %>%
-  dplyr::select(-c(position, residue, fragment_11))
+  dplyr::select(Abl_group:YSK_group) %>%
+  as.matrix()
+
 ref_umap <- uwot::umap(netphorest_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE, spread = 5)
 
 # Create reference UCIE
 ref_transform <- ucie_transformations(ref_umap$embedding)
-ref_ucie <- kinase2cielab(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE)
+ref_ucie <- kinase2cielab(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE) %>%
+  tibble::column_to_rownames('rownames') %>%
+  as.matrix()
 
-usethis::use_data(ref_umap, overwrite = TRUE)
-usethis::use_data(ref_transform, overwrite = TRUE)
+# If internal sysdata doesn't exist yet, initialise with use_data
+if (!file.exists(system.file('R', 'sysdata.rda', package = 'phosphocie'))) {
+  usethis::use_data(ref_kinase, ref_ucie, internal = TRUE)
+} else {
+  # Else: append by loading and re-saving
+  sysdata_filenames <- load("R/sysdata.rda")
+  save(
+    list = c(sysdata_filenames, "ref_kinase", "ref_ucie"),
+    file = file.path(system.file('R', package = 'phosphocie'), 'sysdata.rda')
+  )
+}
+
 
 

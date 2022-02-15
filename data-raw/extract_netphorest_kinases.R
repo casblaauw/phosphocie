@@ -16,4 +16,15 @@ nn_kinases <- readLines('NetPhorest/nn_code.h') %>%
 netphorest_known_kinases <- c(pssm_kinases, nn_kinases)
 # dput(netphorest_known_kinases)
 
-usethis::use_data(netphorest_known_kinases, overwrite = TRUE, internal = TRUE)
+
+# If internal sysdata doesn't exist yet, initialise with use_data
+if (!file.exists(system.file('R', 'sysdata.rda', package = 'phosphocie'))) {
+  usethis::use_data(netphorest_known_kinases, internal = TRUE)
+} else {
+  # Else: append by loading and re-saving
+  sysdata_filenames <- load("R/sysdata.rda")
+  save(
+    list = c(sysdata_filenames, "netphorest_known_kinases"),
+    file = file.path(system.file('R', package = 'phosphocie'), 'sysdata.rda')
+  )
+}

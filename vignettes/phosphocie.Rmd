@@ -32,30 +32,31 @@ phosphorylation site dataset, from [PhosphoSitePlus](https://www.phosphosite.org
 library(phosphocie)
 library(dplyr)
 library(ggplot2)
-library(umap)
+library(uwot)
 ```
 
 ## 1. Prepare phosphorylation site data
 ### Read in phosphorylation site data
 
 
-The base data can be loaded in with `read_kinsub()` and filtered to valid human sequences
-with `filter_phosphosites()`:
+An example extract of the kinase-substrate dataset can be loaded in with `read_kinsub()`:
 
 ```{r}
 kinsub_path <- system.file('extdata', 'kinase_substrate_dataset_head', package = 'phosphocie')
 kinsub <- read_kinsub(kinsub_path)
 
-head(kinsub_human)
+head(kinsub)
 ```
 
 ### Build FASTAs
 `build_fastas()` creates a FASTA file with a separate FASTA entry (header and sequence)
-for each site, which can be used for input in NetPhorest. 
+for each site, which can be used for input in NetPhorest. It automatically appends 7-wide cutout
+around the site to the header, which enables matching in the next steps. 
+It also returns the same data, but with the new headers as the `fasta_id` column.
 
 ```{r}
 tmp <- tempdir()
-build_fastas(kinsub_human, name_col = 'unique_id', seq_col = 'fragment_15', path = file.path(tmp, 'kinsub_human_peptides.fasta'))
+kinsub_headers <- build_fastas(kinsub, name_col = 'unique_id', seq_col = 'fragment_15', path = file.path(tmp, 'kinsub_peptides.fasta'))
 ```
 
 Alternatively, `retrieve_fastas()` retrieves full fasta files for a list of accession IDs.
@@ -64,7 +65,7 @@ possibly unidentified sites, so this option is not recommended and requires more
 to work with the follow-up functions.
 
 ```{r, eval = FALSE}
-retrieve_fastas(kinsub_human$acc_id, file.path(tmp, 'kinsub_human.fasta'))
+# retrieve_fastas(kinsub_human$acc_id, file.path(tmp, 'kinsub.fasta'))
 ```
 
 ## Predict kinases
@@ -73,7 +74,7 @@ Kinase prediction can be done with your tool of choice, but phosphocie natively 
 NetPhorest. For details on how to run NetPhorest locally, see [the NetPhorest site](http://netphorest.info/download.shtml).
 
 ```{}
-# Run NetPhorest
+# Run NetPhorest on the command line
 cat kinsub_human.fasta | ./netphorest > kinsub_human_netphorest
 ```
 
@@ -100,20 +101,15 @@ uncertain
 ```
 
 We know from the metadata encoded in `fasta_id` that S5 is the true site.
-It's not at position 8, where we normally expect sites in data with a `source_window_size`
+It's not at `position` 8, where we normally expect sites in data with a `source_window_size`
 of 15 like PhosphoSitePlus, because the original 'filler' was truncated.
 However, without this metadata knowledge, it's impossible to distinguish this site
-from a fake detected site at the start of a window, in which case position 7 would 
-be the better option.
+from a fake detected site at the start of a window.
 
 By default, `filter_netphorest()` will use the included site fragment included in the
 fasta header by `build_fastas()` to detect the true site:
 
 ```{r}
-uncertain %>%
-  tidyr::extract(fasta_id, c('orig_res', 'orig_site'), '\\|(\\w)(\\d{1,4})$', remove = FALSE, convert = TRUE) %>% 
-  filter_netphorest(source_window_size = 15, protein_res_col = 'orig_res', protein_pos_col = 'orig_site')
-
 uncertain %>%
   filter_netphorest(source_window_size = 15)
 ```
@@ -122,8 +118,8 @@ This can also be passed as a manual column:
 
 ```{r}
 uncertain %>%
-  tidyr::extract(fasta_id, 'fragment', '\\|([A-Za-z_-])$', remove = FALSE) %>% 
-  filter_netphorest(source_window_size = 15, fragment_col = 'fragment')
+  tidyr::extract(fasta_id, 'fragments', '\\|([A-Za-z_-]{3,9})$', remove = FALSE) %>% 
+  filter_netphorest(source_window_size = 15, fragment_col = 'fragments')
 ```
 
 
@@ -133,9 +129,9 @@ If this metadata is not available, `keep_uncertain` determines how remaining unc
 * `keep_uncertain = FALSE`: Drop any uncertain sites completely, only return sites with certainty.
 
 ```{r}
-uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = NULL)
-uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = TRUE)
-uncertain %>% filter_netphorest(source_window_size = 15, keep_uncertain = FALSE)
+uncertain %>% filter_netphorest(source_window_size = 15, match_fragments = FALSE, keep_uncertain = NULL)
+uncertain %>% filter_netphorest(source_window_size = 15, match_fragments = FALSE, keep_uncertain = TRUE)
+uncertain %>% filter_netphorest(source_window_size = 15, match_fragments = FALSE, keep_uncertain = FALSE)
 ```
 
 
@@ -152,9 +148,8 @@ this information can be extracted using a function like `tidyr::separate()` and 
 columns can be used to match as well (i.e. `by = c('acc_id', 'position', 'residue')`)
 
 ```{r}
-kinsub_full <- left_join(kinsub_human, kinsub_netphorest, by = c('unique_id' = 'fasta_id')) 
-kinsub_missing <- kinsub_full %>% filter(is.na(fragment_11)) # Data for which no prediction could be recovered
-kinsub_full <- kinsub_full %>% filter(!is.na(fragment_11))
+kinsub_full <- inner_join(kinsub_headers, kinsub_netphorest, by = 'fasta_id') 
+kinsub_missing <- kinsub_headers %>% filter(!fasta_id %in% kinsub_full$fasta_id) # Data for which no prediction could be recovered
 ```
 
 ### Separate data into labels and predictions
@@ -174,22 +169,22 @@ phosphorylation site dataset.
 
 ```{r}
 # Transform with reference UMAP
-kinsub_preds_3d <- predict(ref_umap, kinsub_preds)
+# ref_umap <- get_ref_umap()
+# kinsub_preds_3d <- uwot::umap_transform(kinsub_preds, ref_umap)
 
 # Transform with reference U-CIE
-kinsub_ucie <- kinase2cielab(kinsub_preds_3d, ref_transform)$hex
+# kinsub_ref_ucie <- kinase2cielab(kinsub_preds_3d, ref_transform)$hex
+kinsub_ref_ucie <- kinase2refcielab(kinsub_preds)
 ```
 
 ### Alternative: transform into standalone U-CIE space
 
 We can also fit your dataset to a new colourspace, based solely on (the 3D representation of) the dataset.
-```{r, eval = FALSE}
-umap_settings_3d <- umap::umap.defaults
-umap_settings_3d$n_components <- 3
-kinsub_umap_3d <- umap::umap(kinsub_preds, umap_settings_3d)
+```{r}
+kinsub_umap_3d <- uwot::umap(kinsub_preds, n_components = 3, spread = 5)
 
-kinsub_transformations <- ucie_transformations(kinsub_umap_3d$layout)
-kinsub_ucie <- kinase2cielab(kinsub_umap_3d$layout, kinsub_transformations)$hex
+kinsub_transformations <- ucie_transformations(kinsub_umap_3d)
+kinsub_ucie <- kinase2cielab(kinsub_umap_3d, kinsub_transformations)
 ```
 
 
@@ -197,21 +192,35 @@ kinsub_ucie <- kinase2cielab(kinsub_umap_3d$layout, kinsub_transformations)$hex
 
 ### Reduce data to 2D
 ```{r}
-kinsub_umap_2d <- umap(kinsub_preds, umap.defaults)
-kinsub_2d <- kinsub_umap_2d$layout %>% magrittr::set_colnames(c('X', 'Y')) 
+kinsub_umap_2d <- uwot::umap(kinsub_preds, spread = 5)
+kinsub_2d <- kinsub_umap_2d %>% magrittr::set_colnames(c('X', 'Y'))
 kinsub_plot_data <- bind_cols(kinsub_info, kinsub_2d, ucie = kinsub_ucie)
+kinsub_ref_plot_data <- bind_cols(kinsub_info, kinsub_2d, ucie = kinsub_ref_ucie)
 ```
 
 ### Create plots
 ```{r}
 kinsub_plot_data %>% 
-  slice_sample(n = 1000) %>% 
   ggplot(aes(X, Y, color = ucie)) + 
   geom_point(size = 3) + 
   scale_color_identity() + 
   guides(color = 'none')
 
 kinsub_plot_data %>% 
+  mutate(kin_gene = forcats::fct_lump_n(kin_gene, 15)) %>% 
+  ggplot(aes(X, Y, color = ucie)) + 
+  geom_point(size = 3) + 
+  scale_color_identity() + 
+  guides(color = 'none') + 
+  facet_wrap(~kin_gene)
+
+kinsub_ref_plot_data %>% 
+  ggplot(aes(X, Y, color = ucie)) + 
+  geom_point(size = 3) + 
+  scale_color_identity() + 
+  guides(color = 'none')
+
+kinsub_ref_plot_data %>% 
   mutate(kin_gene = forcats::fct_lump_n(kin_gene, 15)) %>% 
   ggplot(aes(X, Y, color = ucie)) + 
   geom_point(size = 3) + 

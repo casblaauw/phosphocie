@@ -9,7 +9,8 @@
 #' @details `dataset` can be a 2D or 3D matrix or data frame, with optional
 #'   rownames in the first column or a `rownames_col`-defined column.
 #'
-#' @return Returns a numeric vector with a scaling value, 3 rotation values, and 3 translation values for use in [kinase2cielab()].
+#' @return Returns a numeric vector with a scaling value (S), 3 rotation values
+#' (RotL, Rota, Rotb), and 3 translation values (TrL, Tra, Trb) for use in [kinase2cielab()].
 #' @export
 #'
 #' @examples
@@ -34,7 +35,8 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' @details `dataset` can be a 2D or 3D matrix or data frame, with optional
 #'   rownames in the first column or a `rownames_col`-defined column.
 #'
-#' @return
+#' @return Returns a named character vector of hex codes (or a data frame with a
+#' rownames column and coordinates, if `LAB_coordinates = TRUE`).
 #' @export
 #'
 #' @examples
@@ -58,14 +60,47 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
     return(col_coords)
   } else {
     # Turn hex character vector into a data frame
-    col_hex <- colorspace::hex(colorspace_obj, fixup = fix) %>%
-      data.frame(hex = .) %>%
-      tibble::rownames_to_column('rownames')
+    col_hex <- colorspace::hex(colorspace_obj, fixup = fix)
     return(col_hex)
   }
 
   return(colors)
 }
+
+#' Get kinase score colours based on reference colourspace
+#'
+#' @param data A data frame or matrix, with the same columns as the reference
+#' kinase scoring dataset (NetPhorest, 61 kinases), and optionally a rownames
+#' column (see `rownames_col`)
+#' @param k Number of neighbours to consider.
+#' @param rownames_col Optional: name of a column containing rownames, set as
+#' true rownames before continuing. Allows usage of tidy data in this matrix-based function.
+#' @param fix Optional: boolean, whether to force points outside the colour space inside (TRUE)
+#' or return NA (FALSE). Default is TRUE.
+#'
+#' @return A data frame with
+#' @export
+#'
+#' @examples
+kinase2refcielab <- function(data, k = 10, rownames_col = NULL, fix = TRUE) {
+
+  # Check and prepare data
+  data <- prep_ucie_data(data, rownames_col = rownames_col, check_3D = FALSE)
+  if (ncol(data) != ncol(ref_kinase)) {
+    rlang::abort(paste('Your data must have the same amount of columns as the reference.',
+                       glue::glue('Data columns: {ncol(data)}, ref columns: {ncol(ref_kinase)}')
+                       ))
+  }
+  # Map nearest neighbours
+  indices <- FNN::get.knnx(ref_kinase, data, k = k)$nn.index
+
+  # Get and average colours of nearest neighbours
+  colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_ucie[indices_vec,])))
+  colours <- colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE) %>%
+    setNames(rownames(data))
+  return(colours)
+}
+
 
 #' Check and reformat data for use with U-CIE functions
 #'
@@ -73,6 +108,8 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
 #'
 #' @param dataset A data frame or matrix of 2D or 3D values.
 #' @param rownames_col Optional: name of column to ignore during calculations.
+#' @param check_3D Optional: whether to check and force 3D output. Needed for reduced/cielab data,
+#' not needed for KNN data.
 #'
 #' @details
 #'   The function does a number of processing steps to accept as many data formats as feasible:
@@ -83,7 +120,7 @@ kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rown
 #'   * 2D matrices or data frames are expanded to 3D by padding with 1's.
 #'
 #' @keywords internal
-prep_ucie_data <- function(dataset, rownames_col = NULL) {
+prep_ucie_data <- function(dataset, rownames_col = NULL, check_3D = TRUE) {
 
   if (!is.null(rownames_col)) {
     if (ncol(dataset) < 3) {
@@ -135,22 +172,27 @@ prep_ucie_data <- function(dataset, rownames_col = NULL) {
                        "Please check your dataset."))
   }
 
-  # Check data dimensionality
-  if (ncol(dataset) == 2) {
-    warning("Data expanded to 3D!")
-    dataset <- cbind(dataset, 1)
-  }
-  if (ncol(dataset) != 3) {
-    rlang::abort("The dataset should have 3 numeric columns!")
-  }
+  if (check_3D) {
 
-  # Check for missing values
-  if (anyNA(dataset)) {
-    rlang::abort("The dataset has missing values. Check again!")
-  }
+    # Check data dimensionality
+    if (ncol(dataset) == 2) {
+      warning("Data expanded to 3D!")
+      dataset <- cbind(dataset, 1)
+    }
+    if (ncol(dataset) != 3) {
+      rlang::abort("The dataset should have 3 numeric columns!")
+    }
 
-  # Set column names
-  colnames(dataset) <- c('X', 'Y', 'Z')
+    # Check for missing values
+    if (anyNA(dataset)) {
+      rlang::abort("The dataset has missing values. Check again!")
+    }
+
+    # Set column names
+    colnames(dataset) <- c('X', 'Y', 'Z')
+  }
 
   return(dataset)
 }
+
+
