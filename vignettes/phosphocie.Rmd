@@ -28,6 +28,8 @@ and a pre-trained kinase colourspace based on the full
 In this vignette, we will demonstrate `phosphocie` using the kinase-substrate-annotated 
 phosphorylation site dataset, from [PhosphoSitePlus](https://www.phosphosite.org/). 
 
+For a less annotated example with a real phosphoproteomics dataset, see [the example vignette](example.html)
+
 ```{r setup}
 library(phosphocie)
 library(dplyr)

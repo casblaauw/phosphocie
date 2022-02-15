@@ -1,0 +1,144 @@
+---
+title: "Using phosphocie with phosphoproteomics data"
+author: "Cas Blaauw"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette will use the data from [Francavilla et al. (2017)](https://doi.org/10.1016/j.celrep.2017.03.015),
+visualising enriched kinases in a vulcano plot with `phosphocie` colours.
+
+```{r}
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(phosphocie)
+library(uwot)
+```
+
+
+## Read data
+
+Read in supplementary table 3 from [Francavilla et al. (2017)](https://doi.org/10.1016/j.celrep.2017.03.015):
+
+```{r}
+francavilla_path <- system.file('extdata', 'francavilla_s3.xlsx', package = 'phosphocie')
+data_full <- readxl::read_xlsx(francavilla_path)
+data <- select(data_full, id, Uniprot, `Gene names`, `Protein names`, `Sequence Window`, `Aa Position`, contains('p value'), contains('EOC'), contains('FTE'), contains('OSE'))
+head(data)
+```
+
+## Create fastas for prediction
+
+```{r}
+tmp <- tempdir()
+data_headers <- build_fastas(data, file.path(tmp, 'francavilla.fastas'), name_col = 'id', seq_col = 'Sequence Window')
+```
+
+## Predict kinases
+```{}
+cat francavilla.fastas | ./netphorest > 'francavilla_netphorest'
+```
+
+## Read in predictions
+```{r}
+# Precomputed and compressed preds
+preds <- read_netphorest(system.file('extdata', 'francavilla_netphorest.gz', package = 'phosphocie')) %>%
+  filter_netphorest(source_window_size = 13)
+```
+
+## Get colors
+```{r}
+# Fit on this data
+preds_umap <- preds %>%
+  tibble::column_to_rownames('fasta_id') %>%
+  select(Abl_group:YSK_group) %>%
+  uwot::umap(n_components = 3)
+
+
+transform_vals <- ucie_transformations(preds_umap)
+ucie_colours <- kinase2cielab(preds_umap, transform_vals) 
+```
+
+
+```{r}
+# Use pre-computed reference
+preds_vals <- preds %>% 
+  tibble::column_to_rownames('fasta_id') %>%
+  select(Abl_group:YSK_group)
+
+ucie_ref_colours <- kinase2refcielab(preds_vals, fix = FALSE)
+```
+
+## Calculate average fold changes
+```{r}
+plot_data <- data_headers %>% 
+  filter(!(is.na(`EOC vs FTE p value`) & is.na(`EOC vs OSE_ p value`) & is.na(`FTE vs OSE p value`))) %>% 
+  left_join(ucie_ref_colours, by = c('fasta_id' = 'name')) %>% 
+  filter(!is.na(colour)) %>% 
+  mutate(
+    EOC_mean = rowMeans(across(c(`EOC 1`, `EOC 2`, `EOC 3`, `EOC 4`)), na.rm = TRUE),
+    FTE_mean = rowMeans(across(c(`FTE 13`, `FTE 14`, `FTE 15`, `FTE 16`, `FTE 17`)), na.rm = TRUE),
+    OSE_mean = rowMeans(across(c(`OSE 26`, `OSE 27`, `OSE 28`, `OSE 29`)), na.rm = TRUE),
+    EOC_vs_FTE = EOC_mean/FTE_mean,
+    EOC_vs_OSE = EOC_mean/OSE_mean,
+    FTE_vs_OSE = FTE_mean/OSE_mean
+  )
+
+p_val_cutoff <- 0.005
+log2_change_cutoff <- 0.2
+
+eoc_vs_fte <- plot_data %>% 
+  filter(!is.na(`EOC vs FTE p value`)) %>% 
+  mutate(colour = if_else(`EOC vs FTE p value` < p_val_cutoff & abs(log2(EOC_vs_FTE)) > log2_change_cutoff, colour, 'grey60')) %>% 
+  ggplot(aes(x = log2(EOC_vs_FTE), y = -log10(`EOC vs FTE p value`), col = colour)) +
+  geom_point() +
+  geom_hline(yintercept = -log10(p_val_cutoff), linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = -log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  scale_color_identity() +
+  theme_bw() +
+  xlim(c(-0.5, 0.5)) +
+  labs(x = 'log2(EOC/FTE)', y = '-log10(p)')
+
+eoc_vs_ose <- plot_data %>% 
+  filter(!is.na(`EOC vs OSE_ p value`)) %>% 
+  mutate(colour = if_else(`EOC vs OSE_ p value` < p_val_cutoff & abs(log2(EOC_vs_OSE)) > log2_change_cutoff, colour, 'grey60')) %>% 
+  ggplot(aes(x = log2(EOC_vs_OSE), y = -log10(`EOC vs OSE_ p value`), col = colour)) +
+  geom_point() +
+  geom_hline(yintercept = -log10(p_val_cutoff), linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = -log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  scale_color_identity() +
+  theme_bw() +
+  xlim(c(-0.5, 0.5)) +
+  labs(x = 'log2(EOC/OSE)', y = '-log10(p)')
+
+fte_vs_ose <- plot_data %>% 
+  filter(!is.na(`FTE vs OSE p value`)) %>% 
+  mutate(colour = if_else(`FTE vs OSE p value` < p_val_cutoff & abs(log2(FTE_vs_OSE)) > log2_change_cutoff, colour, 'grey60')) %>% 
+  ggplot(aes(x = log2(FTE_vs_OSE), y = -log10(`FTE vs OSE p value`), col = colour)) +
+  geom_point() +
+  geom_hline(yintercept = -log10(p_val_cutoff), linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = -log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  geom_vline(xintercept = log2_change_cutoff, linetype = 2, alpha = 0.5) +
+  scale_color_identity() +
+  theme_bw() +
+  xlim(c(-0.5, 0.5)) +
+  labs(x = 'log2(FTE/OSE)', y = '-log10(p)')
+```
+
+```{r}
+cowplot::plot_grid(eoc_vs_fte, eoc_vs_ose, fte_vs_ose, ncol = 1, labels = "AUTO")
+```
+
