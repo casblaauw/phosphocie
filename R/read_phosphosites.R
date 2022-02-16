@@ -142,7 +142,8 @@ read_kinsub <- function(path) {
         'in_vitro'
       )
     )) %>%
-    filter_phosphosites()
+    filter_phosphosites() %>%
+    filter(kin_organism == 'human')
 }
 
 #' Filter phosphosite data to human, uniprot-conformant data
