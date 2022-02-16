@@ -9,8 +9,7 @@ build_fastas(
   path,
   name_col,
   seq_col,
- 
-    header_pattern = "{.data[[name_col]]}|{toupper(stringr::str_sub(.data[[seq_col]], ceiling(nchar(.data[[seq_col]])/2)-3, ceiling(nchar(.data[[seq_col]])/2)+3))}"
+  header_pattern = "{.data[[name_col]]}|{get_middle_fragment(.data[[seq_col]], 7)}"
 )
 }
 \arguments{

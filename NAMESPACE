@@ -2,6 +2,7 @@
 
 export(build_fastas)
 export(filter_netphorest)
+export(get_middle_fragment)
 export(kinase2cielab)
 export(kinase2refcielab)
 export(read_kinsub)

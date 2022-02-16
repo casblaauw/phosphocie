@@ -164,7 +164,7 @@ retrieve_fastas <- function(uniprot_acc, path) {
 #'
 #' build_fastas(kinsub, tmp, seq_col = 'fragment_15', header_pattern = '{acc_id}|{gene}|{substrate}|{residue}{position}')
 
-build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data[[name_col]]}|{toupper(stringr::str_sub(.data[[seq_col]], ceiling(nchar(.data[[seq_col]])/2)-3, ceiling(nchar(.data[[seq_col]])/2)+3))}') {
+build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data[[name_col]]}|{get_middle_fragment(.data[[seq_col]], 7)}') {
 
   if (is.null(header_pattern)) {
     header_pattern <- '{name_col}'
@@ -214,4 +214,26 @@ build_fastas <- function(data, path, name_col, seq_col, header_pattern = '{.data
 
   print(glue::glue('Successfully built fasta, saved at {path}'))
   return(invisible(data))
+}
+
+#' Extract middle fragment from each string
+#'
+#' Returns an uppercase slice of size `size` from each string supplied, centered
+#' on the middle position of the string. Useful to slice out middles from
+#' sequence fragments.
+#'
+#' @param string_vec A character vector of strings, all at least size `size`.
+#' @param size The size of the returned middle fragments, as an uneven integer.
+#'
+#' @return An all-uppercase character vector, of the same length as the `string_vec` input.
+#' @export
+#'
+get_middle_fragment <- function(string_vec, size) {
+  if (size %% 2 != 1) {
+    rlang::abort('Please provide an uneven size.')
+  }
+  side_size <- (size-1)/2
+  mid_positions <- ceiling(nchar(string_vec)/2)
+
+  toupper(stringr::str_sub(string_vec, mid_positions-side_size, mid_positions+side_size))
 }
