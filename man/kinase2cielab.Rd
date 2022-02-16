@@ -26,8 +26,8 @@ as calculated by \code{\link[=ucie_transformations]{ucie_transformations()}}.}
 or return NA (FALSE). Default is TRUE.}
 }
 \value{
-Returns a data frame with names and hex codes in \code{names} and \code{colour}
-(or \code{names}/\code{L}/\code{a}/\code{b} if \code{LAB_coordinates = TRUE}).
+Returns a data frame with names and hex codes in \code{name} and \code{colour}
+(or \code{name}/\code{L}/\code{a}/\code{b} if \code{LAB_coordinates = TRUE}).
 }
 \description{
 Get colours from fitted kinase data
