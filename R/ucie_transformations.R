@@ -5,28 +5,31 @@
 #'
 #' @param dataset A data frame or matrix of 3D values.
 #' @param rownames_col Optional: name of column to ignore during calculations.
+#' @param center A boolean indicating whether data should be centered during the fitting
+#' process. Improves performance, but requires `center = TRUE` in [transform_data()] too.
 #'
 #' @details `dataset` can be a 2D or 3D matrix or data frame, with optional
 #'   rownames in the first column or a `rownames_col`-defined column.
 #'
 #' @return Returns a numeric vector with a scaling value (S), 3 rotation values
-#' (RotL, Rota, Rotb), and 3 translation values (TrL, Tra, Trb) for use in [kinase2cielab()].
+#' (RotL, Rota, Rotb), and 3 translation values (TrL, Tra, Trb) for use in [transform_data()].
 #' @export
 #'
 #' @examples
-ucie_transformations <- function(dataset, rownames_col = NULL) {
-  prep_ucie_data(dataset, rownames_col = rownames_col)
+fit_transform <- function(dataset, rownames_col = NULL, center = TRUE) {
+  # Prepare dataset
+  dataset <- prep_ucie_data(dataset, rownames_col = rownames_col)
 
-  movement <- ucie:::FitColorsFunction(dataset, WL = 1, Wa = 1, Wb = 1) %>%
-    stats::setNames(c('S', 'RotL', 'Rota', 'Rotb', 'TrL', 'Tra', 'Trb'))
-  return(movement)
+  # Fit all parameters from untransformed data
+  fit_params <- ucie:::FitColorsFunction(dataset, WL = 1, Wa = 1, Wb = 1, center = center)
+  return(fit_params)
 }
 
 #' Get colours from fitted kinase data
 #'
 #' @param dataset A data frame or matrix of 3D values.
 #' @param transform_vals A numeric vector with 1 scaling, 3 rotation, and 3 translation values,
-#' as calculated by [ucie_transformations()].
+#' as calculated by [fit_transform()].
 #' @param LAB_coordinates Optional: boolean, whether to return CIELAB coordinates instead of RGB codes.
 #' @param rownames_col Optional: name of column to ignore during calculations.
 #' @param fix Optional: boolean, whether to force points outside the colour space inside (TRUE)
@@ -40,17 +43,24 @@ ucie_transformations <- function(dataset, rownames_col = NULL) {
 #' @export
 #'
 #' @examples
-kinase2cielab <- function(dataset, transform_vals, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE) {
+transform_data <- function(dataset, transform_vals, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE, center = TRUE) {
 
   # Prep dataset
   dataset <- prep_ucie_data(dataset, rownames_col = rownames_col)
 
-  data_scaled <- dataset %>%
-    ucie:::Scaling(transform_vals[1]*1) %>%
-    ucie:::Rotation(transform_vals[2], transform_vals[3], transform_vals[4]) %>%
-    ucie:::Translation(transform_vals[5], transform_vals[6], transform_vals[7]) %>%
-    round(2)
-  colorspace_obj <- colorspace::LAB(data_scaled)
+  # Transform data
+  dataset <- ucie:::Scaling(dataset, transform_vals[1])
+  dataset <- ucie:::Rotation(dataset, transform_vals[2], transform_vals[3], transform_vals[4])
+  dataset <- ucie:::Translation(dataset, transform_vals[5], transform_vals[6], transform_vals[7])
+
+  if (center) {
+    data_centroid <- ucie:::PolygonCentroid(dataset)
+    cielab_centroid <- ucie:::PolygonCentroid(ucie:::RGB2Lab(ucie:::RGB_space))
+    translation_set <- cielab_centroid - data_centroid
+    dataset <- ucie:::Translation(dataset, translation_set[1], translation_set[2], translation_set[3])
+  }
+
+  colorspace_obj <- colorspace::LAB(round(dataset, 2))
 
   if (LAB_coordinates) {
     # Turn coordinates matrix into a data frame
