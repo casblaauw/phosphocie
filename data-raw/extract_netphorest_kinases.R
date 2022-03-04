@@ -1,15 +1,16 @@
 library(stringr)
 library(magrittr)
 
-download.file('http://netphorest.info/download/NetPhorest_human_2.1.zip', file.path('./NetPhorest_human_2.1.zip'))
-unzip('NetPhorest_human_2.1.zip', exdir = './NetPhorest')
+tmp_dir <- tempdir()
+download.file('http://netphorest.info/download/NetPhorest_human_2.1.zip', file.path(tmp_dir, '/NetPhorest_human_2.1.zip'))
+unzip(file.path(tmp_dir, '/NetPhorest_human_2.1.zip'), exdir = file.path(tmp_dir, 'NetPhorest'))
 
-pssm_kinases <- readLines('NetPhorest/pssm_code.h') %>%
+pssm_kinases <- readLines(file.path(tmp_dir, 'NetPhorest/pssm_code.h')) %>%
   grep(pattern = '\\thuman\\tKIN', x = ., value = TRUE, fixed = TRUE) %>%
   stringr::str_match('KIN\\\\t([\\w\\d]*)\\\\t') %>%
   .[,2]
 
-nn_kinases <- readLines('NetPhorest/nn_code.h') %>%
+nn_kinases <- readLines(file.path(tmp_dir, 'NetPhorest/nn_code.h')) %>%
   grep(pattern = '\\thuman\\tKIN', x = ., value = TRUE, fixed = TRUE) %>%
   stringr::str_match('KIN\\\\t([\\w\\d]*)\\\\t') %>%
   .[,2]

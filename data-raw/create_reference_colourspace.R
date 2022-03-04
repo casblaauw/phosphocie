@@ -42,22 +42,27 @@ ref_kinase <- netphorest_kinase %>%
   dplyr::select(Abl_group:YSK_group) %>%
   as.matrix()
 
-ref_umap <- uwot::umap(netphorest_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE, spread = 5)
+ref_umap <- uwot::tumap(ref_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE)
 
 # Create reference UCIE
-ref_transform <- ucie_transformations(ref_umap$embedding)
-ref_ucie <- kinase2cielab(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE) %>%
-  tibble::column_to_rownames('rownames') %>%
+ref_transform <- fit_transform(ref_umap$embedding)
+ref_ucie <- transform_data(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE) %>%
+  tibble::column_to_rownames('name') %>%
   as.matrix()
+
+ref_pca_data <- prcomp(ref_kinase)$x[netphorest_kinase$residue != 'Y', 1:3]
+ref_pca_transform <- fit_transform(ref_pca_data)
+ref_pca <- transform_data(ref_pca_data, ref_pca_transform, LAB_coordinates = TRUE)
+
 
 # If internal sysdata doesn't exist yet, initialise with use_data
 if (!file.exists(system.file('R', 'sysdata.rda', package = 'phosphocie'))) {
-  usethis::use_data(ref_kinase, ref_ucie, internal = TRUE)
+  usethis::use_data(ref_kinase, ref_ucie, ref_pca, internal = TRUE)
 } else {
   # Else: append by loading and re-saving
   sysdata_filenames <- load("R/sysdata.rda")
   save(
-    list = c(sysdata_filenames, "ref_kinase", "ref_ucie"),
+    list = c(sysdata_filenames, "ref_kinase", "ref_ucie", "ref_pca"),
     file = file.path(system.file('R', package = 'phosphocie'), 'sysdata.rda')
   )
 }
