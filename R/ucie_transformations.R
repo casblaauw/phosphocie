@@ -104,22 +104,12 @@ kinase2cielab <- function(data, k = 10, LAB_coordinates = FALSE, rownames_col = 
                        ))
   }
 
-  # Separate tyrosines
-  tyrosine_kinases <- c('Eph_group', 'Src_group', 'Met_group', 'EGFR_group', 'FLT3_CSF1R_Kit_PDGFR_group', 'Tec_group', 'KDR_FLT1_group', 'InsR_group', 'Abl_group', 'JAK2', 'Trk_group', 'Syk_group', 'Tyk2')
-  serine_threonine_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% tyrosine_kinases]
-  tyrosine_scores <- rowMeans(data[,tyrosine_kinases])
-  serine_threonine_scores <- rowMeans(data[,serine_threonine_kinases])
-  tyrosine_indices <- which(tyrosine_scores > serine_threonine_scores)
-  serine_threonine_indices <- which(serine_threonine_scores > tyrosine_scores)
-
   # Map nearest neighbours
-  indices <- FNN::get.knnx(ref_kinase, data[serine_threonine_indices, ], k = k)$nn.index
+  indices <- FNN::get.knnx(ref_kinase, data, k = k)$nn.index
 
   # Get and average colours of nearest neighbours
   if (LAB_coordinates) {
-    colour_coords <- matrix(0, nrow = nrow(data), ncol = 3) # 0,0,0 is #000000 in UCIE space
-    colnames(colour_coords) <- c('L', 'A', 'B')
-    colour_coords[serine_threonine_indices,] <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
+    colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
     colour_coords <- as.data.frame(colour_coords)
     if (!is.null(rownames(data))) {rownames(colour_coords) <- rownames(data)}
     colour_coords <- tibble::rownames_to_column(colour_coords, 'name')
