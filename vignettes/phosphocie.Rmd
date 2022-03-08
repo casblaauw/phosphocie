@@ -157,8 +157,8 @@ kinsub_missing <- kinsub_headers %>% filter(!fasta_id %in% kinsub_full$fasta_id)
 ### Separate data into labels and predictions
 
 ```{r}
-kinsub_preds <- select(kinsub_full, unique_id, Abl_group:YSK_group) %>% 
-  tibble::column_to_rownames('unique_id') %>% 
+kinsub_preds <- select(kinsub_full, fasta_id, Abl_group:YSK_group) %>% 
+  tibble::column_to_rownames('fasta_id') %>% 
   as.matrix()
 kinsub_info <- select(kinsub_full, -c(Abl_group:YSK_group))
 ```
@@ -171,22 +171,17 @@ phosphorylation site dataset.
 
 ```{r}
 # Transform with reference UMAP
-# ref_umap <- get_ref_umap()
-# kinsub_preds_3d <- uwot::umap_transform(kinsub_preds, ref_umap)
-
-# Transform with reference U-CIE
-# kinsub_ref_ucie <- kinase2cielab(kinsub_preds_3d, ref_transform)$hex
-kinsub_ref_ucie <- kinase2refcielab(kinsub_preds)
+kinsub_ref_ucie <- kinase2cielab(kinsub_preds)
 ```
 
 ### Alternative: transform into standalone U-CIE space
 
 We can also fit your dataset to a new colourspace, based solely on (the 3D representation of) the dataset.
 ```{r}
-kinsub_umap_3d <- uwot::umap(kinsub_preds, n_components = 3, spread = 5)
+kinsub_umap_3d <- uwot::tumap(kinsub_preds, n_components = 3)
 
-kinsub_transformations <- ucie_transformations(kinsub_umap_3d)
-kinsub_ucie <- kinase2cielab(kinsub_umap_3d, kinsub_transformations)
+kinsub_transformations <- fit_transform(kinsub_umap_3d)
+kinsub_ucie <- transform_data(kinsub_umap_3d, kinsub_transformations)
 ```
 
 
@@ -194,37 +189,39 @@ kinsub_ucie <- kinase2cielab(kinsub_umap_3d, kinsub_transformations)
 
 ### Reduce data to 2D
 ```{r}
-kinsub_umap_2d <- uwot::umap(kinsub_preds, spread = 5)
+kinsub_umap_2d <- uwot::tumap(kinsub_preds)
 kinsub_2d <- kinsub_umap_2d %>% magrittr::set_colnames(c('X', 'Y'))
-kinsub_plot_data <- bind_cols(kinsub_info, kinsub_2d, ucie = kinsub_ucie)
-kinsub_ref_plot_data <- bind_cols(kinsub_info, kinsub_2d, ucie = kinsub_ref_ucie)
+kinsub_plot_data <- bind_cols(kinsub_info, kinsub_2d) %>% 
+  left_join(kinsub_ucie, by = c('fasta_id' = 'name'))
+kinsub_ref_plot_data <- bind_cols(kinsub_info, kinsub_2d) %>% 
+  left_join(kinsub_ref_ucie, by = c('fasta_id' = 'name'))
 ```
 
 ### Create plots
 ```{r}
 kinsub_plot_data %>% 
-  ggplot(aes(X, Y, color = ucie)) + 
+  ggplot(aes(X, Y, color = colour)) + 
   geom_point(size = 3) + 
   scale_color_identity() + 
   guides(color = 'none')
 
 kinsub_plot_data %>% 
   mutate(kin_gene = forcats::fct_lump_n(kin_gene, 15)) %>% 
-  ggplot(aes(X, Y, color = ucie)) + 
+  ggplot(aes(X, Y, color = colour)) + 
   geom_point(size = 3) + 
   scale_color_identity() + 
   guides(color = 'none') + 
   facet_wrap(~kin_gene)
 
 kinsub_ref_plot_data %>% 
-  ggplot(aes(X, Y, color = ucie)) + 
+  ggplot(aes(X, Y, color = colour)) + 
   geom_point(size = 3) + 
   scale_color_identity() + 
   guides(color = 'none')
 
 kinsub_ref_plot_data %>% 
   mutate(kin_gene = forcats::fct_lump_n(kin_gene, 15)) %>% 
-  ggplot(aes(X, Y, color = ucie)) + 
+  ggplot(aes(X, Y, color = colour)) + 
   geom_point(size = 3) + 
   scale_color_identity() + 
   guides(color = 'none') + 
