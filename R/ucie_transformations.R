@@ -94,7 +94,7 @@ transform_data <- function(dataset, transform_vals, LAB_coordinates = FALSE, row
 #' @export
 #'
 #' @examples
-kinase2refcielab <- function(data, k = 10, rownames_col = NULL, fix = TRUE) {
+kinase2cielab <- function(data, k = 10, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE) {
 
   # Check and prepare data
   data <- prep_ucie_data(data, rownames_col = rownames_col, check_3D = FALSE)
@@ -103,18 +103,36 @@ kinase2refcielab <- function(data, k = 10, rownames_col = NULL, fix = TRUE) {
                        glue::glue('Data columns: {ncol(data)}, ref columns: {ncol(ref_kinase)}')
                        ))
   }
+
+  # Separate tyrosines
+  tyrosine_kinases <- c('Eph_group', 'Src_group', 'Met_group', 'EGFR_group', 'FLT3_CSF1R_Kit_PDGFR_group', 'Tec_group', 'KDR_FLT1_group', 'InsR_group', 'Abl_group', 'JAK2', 'Trk_group', 'Syk_group', 'Tyk2')
+  serine_threonine_kinases <- netphorest_known_kinases[!netphorest_known_kinases %in% tyrosine_kinases]
+  tyrosine_scores <- rowMeans(data[,tyrosine_kinases])
+  serine_threonine_scores <- rowMeans(data[,serine_threonine_kinases])
+  tyrosine_indices <- which(tyrosine_scores > serine_threonine_scores)
+  serine_threonine_indices <- which(serine_threonine_scores > tyrosine_scores)
+
   # Map nearest neighbours
-  indices <- FNN::get.knnx(ref_kinase, data, k = k)$nn.index
+  indices <- FNN::get.knnx(ref_kinase, data[serine_threonine_indices, ], k = k)$nn.index
 
   # Get and average colours of nearest neighbours
-  colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_ucie[indices_vec,])))
-  colours <- colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE) %>%
-    data.frame(colour = .)
-  if (!is.null(rownames(data))) {
-    rownames(colours) <- rownames(data)
+  if (LAB_coordinates) {
+    colour_coords <- matrix(0, nrow = nrow(data), ncol = 3) # 0,0,0 is #000000 in UCIE space
+    colnames(colour_coords) <- c('L', 'A', 'B')
+    colour_coords[serine_threonine_indices,] <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
+    colour_coords <- as.data.frame(colour_coords)
+    if (!is.null(rownames(data))) {rownames(colour_coords) <- rownames(data)}
+    colour_coords <- tibble::rownames_to_column(colour_coords, 'name')
+    return(colour_coords)
+  } else {
+    colours <- rep('#000000', nrow(data))
+    colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
+    colours[serine_threonine_indices] <- colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE)
+    colours <- data.frame(colour = colours)
+    if (!is.null(rownames(data))) {rownames(colours) <- rownames(data)}
+    colours <- tibble::rownames_to_column(colours, 'name')
+    return(colours)
   }
-  colours <- tibble::rownames_to_column(colours, 'name')
-  return(colours)
 }
 
 

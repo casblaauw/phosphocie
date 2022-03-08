@@ -36,33 +36,36 @@ netphorest_kinase <- filter_netphorest(netphorest_kinase,
                                        source_window_size = 15,
                                        keep_uncertain = FALSE)
 
-# Create reference UMAP
 ref_kinase <- netphorest_kinase %>%
   tibble::column_to_rownames('fasta_id') %>%
   dplyr::select(Abl_group:YSK_group) %>%
   as.matrix()
 
-ref_umap <- uwot::tumap(ref_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE)
 
-# Create reference UCIE
-ref_transform <- fit_transform(ref_umap$embedding)
-ref_ucie <- transform_data(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE) %>%
+# Create reference PCA
+ref_pca_data <- prcomp(ref_kinase)$x[,1:3]
+ref_pca_transform <- fit_transform(ref_pca_data[netphorest_kinase$residue != 'Y',])
+ref_pca <- transform_data(ref_pca_data, ref_pca_transform, LAB_coordinates = TRUE) %>%
   tibble::column_to_rownames('name') %>%
   as.matrix()
+ref_pca[netphorest_kinase$residue == 'Y'] <- matrix(0, nrow = sum(netphorest_kinase$residue == 'Y'), ncol = 3)
 
-ref_pca_data <- prcomp(ref_kinase)$x[netphorest_kinase$residue != 'Y', 1:3]
-ref_pca_transform <- fit_transform(ref_pca_data)
-ref_pca <- transform_data(ref_pca_data, ref_pca_transform, LAB_coordinates = TRUE)
+# Create reference UMAP
+# ref_umap_data <- uwot::tumap(ref_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE)
+# ref_umap_transform <- fit_transform(ref_umap$embedding)
+# ref_umap <- transform_data(ref_umap$embedding, ref_transform, LAB_coordinates = TRUE) %>%
+#   tibble::column_to_rownames('name') %>%
+#   as.matrix()
 
 
 # If internal sysdata doesn't exist yet, initialise with use_data
 if (!file.exists(system.file('R', 'sysdata.rda', package = 'phosphocie'))) {
-  usethis::use_data(ref_kinase, ref_ucie, ref_pca, internal = TRUE)
+  usethis::use_data(ref_kinase, ref_pca, internal = TRUE)
 } else {
   # Else: append by loading and re-saving
   sysdata_filenames <- load("R/sysdata.rda")
   save(
-    list = c(sysdata_filenames, "ref_kinase", "ref_ucie", "ref_pca"),
+    list = c(sysdata_filenames, "ref_kinase", "ref_pca"),
     file = file.path(system.file('R', package = 'phosphocie'), 'sysdata.rda')
   )
 }
