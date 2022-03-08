@@ -43,12 +43,17 @@ ref_kinase <- netphorest_kinase %>%
 
 
 # Create reference PCA
-ref_pca_data <- prcomp(ref_kinase)$x[,1:3]
-ref_pca_transform <- fit_transform(ref_pca_data[netphorest_kinase$residue != 'Y',])
-ref_pca <- transform_data(ref_pca_data, ref_pca_transform, LAB_coordinates = TRUE) %>%
+ref_pca_data <- ref_kinase[netphorest_kinase$residue != 'Y',] %>%
+  .[,colSums(.) > 0] %>%
+  prcomp(center = TRUE, scale. = TRUE) %>%
+  .$x %>%
+  .[, 1:3]
+ref_pca_transform <- fit_transform(ref_pca_data)
+ref_pca_fitted <- transform_data(ref_pca_data, ref_pca_transform, LAB_coordinates = TRUE) %>%
   tibble::column_to_rownames('name') %>%
   as.matrix()
-ref_pca[netphorest_kinase$residue == 'Y'] <- matrix(0, nrow = sum(netphorest_kinase$residue == 'Y'), ncol = 3)
+ref_pca <- matrix(0, nrow = nrow(ref_kinase), ncol = 3, dimnames = list(rownames(ref_kinase), c('L', 'A', 'B')))
+ref_pca[netphorest_kinase$residue != 'Y',] <- ref_pca_fitted
 
 # Create reference UMAP
 # ref_umap_data <- uwot::tumap(ref_kinase, n_components = 3, ret_model = TRUE, verbose = TRUE)

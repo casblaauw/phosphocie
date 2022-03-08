@@ -107,18 +107,17 @@ kinase2cielab <- function(data, k = 10, LAB_coordinates = FALSE, rownames_col = 
   # Map nearest neighbours
   indices <- FNN::get.knnx(ref_kinase, data, k = k)$nn.index
 
+
   # Get and average colours of nearest neighbours
+  colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
+
   if (LAB_coordinates) {
-    colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
     colour_coords <- as.data.frame(colour_coords)
     if (!is.null(rownames(data))) {rownames(colour_coords) <- rownames(data)}
     colour_coords <- tibble::rownames_to_column(colour_coords, 'name')
     return(colour_coords)
   } else {
-    colours <- rep('#000000', nrow(data))
-    colour_coords <- t(apply(indices, 1, function(indices_vec) colMeans(ref_pca[indices_vec,])))
-    colours[serine_threonine_indices] <- colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE)
-    colours <- data.frame(colour = colours)
+    colours <- data.frame(colour = colorspace::hex(colorspace::LAB(colour_coords), fixup = TRUE))
     if (!is.null(rownames(data))) {rownames(colours) <- rownames(data)}
     colours <- tibble::rownames_to_column(colours, 'name')
     return(colours)
