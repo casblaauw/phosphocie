@@ -94,7 +94,7 @@ transform_data <- function(dataset, transform_vals, LAB_coordinates = FALSE, row
 #' @export
 #'
 #' @examples
-kinase2cielab <- function(data, k = 10, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE) {
+kinase2cielab <- function(data, k = 3, LAB_coordinates = FALSE, rownames_col = NULL, fix = TRUE) {
 
   # Check and prepare data
   data <- prep_ucie_data(data, rownames_col = rownames_col, check_3D = FALSE)
